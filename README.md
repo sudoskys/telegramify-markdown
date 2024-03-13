@@ -1,8 +1,8 @@
 # telegramify-markdown
 
-🪄 Python Telegram markdown Converter | No more worrying about formatting.
+> 🪄 Python Telegram markdown Converter | No more worrying about formatting.
 
-Raw Markdown -> Telegram MarkdownV2 Style
+**Raw Markdown -> Telegram MarkdownV2 Style**
 
 Before the advent of this repository, when you needed to send Markdown content in Telegram rendering, you had to use
 complex regularization. Today, you can make it easier and customize it to achieve better results!
