@@ -1,6 +1,6 @@
 # telegramify-markdown
 
-[![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/novelai-python)
+[![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
 > 🪄 Python Telegram markdown Converter | No more worrying about formatting.
