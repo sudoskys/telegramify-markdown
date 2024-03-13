@@ -61,7 +61,7 @@ output as follows:
 [rttt]()
 🖼[PIC](https://www\.example\.com/image\.jpg)
 1\. Order\!ed
-1\. Order\!ed sub
+   1\. Order\!ed sub
 ⦁ Unord\*\-\.ered
 ```
 
