@@ -65,5 +65,5 @@ output as follows:
 ⦁ Unord\*\-\.ered
 ```
 
-> Note: Telegram Server automatically processes the double of `\` again (even after escaping), which is beyond the
+> Note: Telegram Server automatically processes the double of `\`(`\\`) again (even after escaping), which is beyond the
 > control of us.
