@@ -35,6 +35,9 @@ markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = """
 # 一级标题 `c!ode` # 一级标题 `code`
 [Link!AA](https://www.example.com)
+
+[key!]: https://www.google.com "a title!"
+
 [这是!链接2][asd!asd](https://www.example.com)
 [rttt]()
 ![PIC](https://www.example.com/image.jpg)
@@ -48,10 +51,12 @@ output as follows:
 ```markdown
 *📌 一级标题 `c\!ode` \# 一级标题 `code`*
 [Link\!AA](https://www\.example\.com)
+
+🔗[a title\!](https://www\.google\.com)
+
 \[这是\!链接2\][asd\!asd](https://www\.example\.com)
 [rttt]()
 🖼[PIC](https://www\.example\.com/image\.jpg)
-
 ```
 
 > Note: Telegram Server automatically processes the double of `\` again (even after escaping), which is beyond the
