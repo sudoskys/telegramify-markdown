@@ -1,5 +1,8 @@
 # telegramify-markdown
 
+[![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/novelai-python)
+[![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
+
 > 🪄 Python Telegram markdown Converter | No more worrying about formatting.
 
 **Raw Markdown -> Telegram MarkdownV2 Style**
