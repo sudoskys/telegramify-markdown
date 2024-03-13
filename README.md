@@ -7,8 +7,9 @@
 
 **Raw Markdown -> Telegram MarkdownV2 Style**
 
-Before the advent of this repository, when you needed to send Markdown content in Telegram rendering, you had to use
-complex regularization. Today, you can make it easier and customize it to achieve better results!
+Before this repo came along, when you wanted to send and render unknown Markdown content (like GitHub's Readme),
+you had to use complex parsing and reconstruction methods.
+Today, you can make it easier and customize it to achieve better results!
 
 I used a custom Render to achieve this, using a real environment server to verify the applicability of this tool.
 
@@ -61,7 +62,7 @@ output as follows:
 [rttt]()
 🖼[PIC](https://www\.example\.com/image\.jpg)
 1\. Order\!ed
-   1\. Order\!ed sub
+1\. Order\!ed sub
 ⦁ Unord\*\-\.ered
 ```
 
