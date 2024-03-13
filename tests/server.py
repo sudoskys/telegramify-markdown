@@ -5,7 +5,8 @@ from telebot import TeleBot
 
 def server_t(converted):
     telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
-    assert telegram_bot_token is not None, "Please set the TELEGRAM_BOT_TOKEN environment variable"
+    assert isinstance(telegram_bot_token,
+                      str) and telegram_bot_token, "Please set the TELEGRAM_BOT_TOKEN environment variable"
     bot = TeleBot(telegram_bot_token)
     bot_me = bot.get_me()
     try:
