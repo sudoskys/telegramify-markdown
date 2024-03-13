@@ -54,4 +54,5 @@ output as follows:
 
 ```
 
-> Note: Telegram Server automatically processes \\ again (even after escaping), which is beyond the control of us.
+> Note: Telegram Server automatically processes the double of `\` again (even after escaping), which is beyond the
+> control of us.
