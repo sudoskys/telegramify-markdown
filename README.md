@@ -1,2 +1,54 @@
 # telegramify-markdown
-🪄 Python Telegram markdown| No more worrying about formatting.
+
+🪄 Python Telegram markdown Converter | No more worrying about formatting.
+
+Raw Markdown -> Telegram MarkdownV2 Style
+
+Before the advent of this repository, when you needed to send Markdown content in Telegram rendering, you had to use
+complex regularization. Today, you can make it easier and customize it to achieve better results!
+
+I used a custom Render to achieve this, using a real environment server to verify the applicability of this tool.
+
+## Installation
+
+```bash
+pip install telegramify-markdown
+```
+
+or if you use `pdm`:
+
+```shell
+pdm add telegramify-markdown
+```
+
+## Use case
+
+````python3
+from telegramify_markdown import convert
+from telegramify_markdown.customize import markdown_symbol
+
+markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
+markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
+md = """
+# 一级标题 `c!ode` # 一级标题 `code`
+[Link!AA](https://www.example.com)
+[这是!链接2][asd!asd](https://www.example.com)
+[rttt]()
+![PIC](https://www.example.com/image.jpg)
+"""
+converted = convert(md)
+print(converted)
+````
+
+output as follows:
+
+```markdown
+*📌 一级标题 `c\!ode` \# 一级标题 `code`*
+[Link\!AA](https://www\.example\.com)
+\[这是\!链接2\][asd\!asd](https://www\.example\.com)
+[rttt]()
+🖼[PIC](https://www\.example\.com/image\.jpg)
+
+```
+
+> Note: Telegram Server automatically processes \\ again (even after escaping), which is beyond the control of us.
