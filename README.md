@@ -41,6 +41,9 @@ md = """
 [这是!链接2][asd!asd](https://www.example.com)
 [rttt]()
 ![PIC](https://www.example.com/image.jpg)
+1. Order!ed
+   1. Order!ed sub
+- Unord*-.ered
 """
 converted = telegramify_markdown.convert(md)
 print(converted)
@@ -57,6 +60,9 @@ output as follows:
 \[这是\!链接2\][asd\!asd](https://www\.example\.com)
 [rttt]()
 🖼[PIC](https://www\.example\.com/image\.jpg)
+1\. Order\!ed
+1\. Order\!ed sub
+⦁ Unord\*\-\.ered
 ```
 
 > Note: Telegram Server automatically processes the double of `\` again (even after escaping), which is beyond the

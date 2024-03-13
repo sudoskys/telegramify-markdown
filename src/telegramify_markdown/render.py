@@ -55,7 +55,10 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_list_item(
             self, token: block_token.ListItem, max_line_length: int
     ) -> Iterable[str]:
-        token.leader = formatting.escape_markdown("⦁")
+        if "." in token.leader:
+            token.leader = formatting.escape_markdown(token.leader) + " "
+        else:
+            token.leader = formatting.escape_markdown("⦁")
         return super().render_list_item(token, max_line_length)
 
     def render_link_reference_definition(
