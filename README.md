@@ -27,7 +27,7 @@ pdm add telegramify-markdown
 ## Use case
 
 ````python3
-from telegramify_markdown import convert
+import telegramify_markdown
 from telegramify_markdown.customize import markdown_symbol
 
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
@@ -42,7 +42,7 @@ md = """
 [rttt]()
 ![PIC](https://www.example.com/image.jpg)
 """
-converted = convert(md)
+converted = telegramify_markdown.convert(md)
 print(converted)
 ````
 
