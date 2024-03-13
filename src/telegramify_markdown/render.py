@@ -55,7 +55,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_list_item(
             self, token: block_token.ListItem, max_line_length: int
     ) -> Iterable[str]:
-        if "." in token.leader:
+        if str(token.leader).strip().endswith("."):
             token.leader = formatting.escape_markdown(token.leader) + " "
         else:
             token.leader = formatting.escape_markdown("⦁")
