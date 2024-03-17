@@ -29,6 +29,29 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             line += " " + token.closing_sequence
         return [formatting.mbold(line, escape=False)]
 
+    def render_fenced_code_block(
+            self, token: block_token.BlockCode, max_line_length: int
+    ) -> Iterable[str]:
+        indentation = " " * token.indentation
+        yield indentation + token.delimiter + token.info_string
+        yield from self.prefix_lines(
+            token.content[:-1].split("\n"), indentation
+        )
+        yield indentation + token.delimiter
+
+    def render_inline_code(self, token: span_token.InlineCode) -> Iterable[Fragment]:
+        if len(token.delimiter) == 3:
+            return self.embed_span(
+                Fragment(token.delimiter + token.padding + "\n"),
+                token.children,
+                Fragment(token.padding + token.delimiter)
+            )
+        return self.embed_span(
+            Fragment(token.delimiter + token.padding),
+            token.children,
+            Fragment(token.padding + token.delimiter)
+        )
+
     def render_block_code(
             self, token: block_token.BlockCode, max_line_length: int
     ) -> Iterable[str]:

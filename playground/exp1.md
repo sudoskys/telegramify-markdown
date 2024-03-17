@@ -35,6 +35,8 @@ Header
 print("Hello, World!")
 ```
 
+```print("Hello, Inline Muti!")```
+
 - item
     - nested item
 
