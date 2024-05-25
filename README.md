@@ -25,19 +25,19 @@ or if you use `pdm`:
 pdm add telegramify-markdown
 ```
 
-## Supported Features
+## Supported Input
 
 - [x] Headings (1-6)
-- [x] Links [text](url)
-- [x] Images ![alt]
+- [x] `Links [text](url)`
+- [x] `Images ![alt]`
 - [x] Lists (Ordered, Unordered)
-- [x] Tables |-|-|
-- [x] Horizontal Rule ----
-- [x] *Text* **Styles**
-- [x] __Underline__
+- [x] `Tables |-|-|`
+- [x] `Horizontal Rule ----`
+- [x] `*Text* **Styles**`
+- [x] `__Underline__` (if `customize.strict_markdown` is False)
 - [x] Code Blocks
 - [x] `Inline Code`
-- [x] Block Quotes
+- [x] `Block Quotes >`
 - [x] `~~Strikethrough~~`
 - [ ] Task Lists
 - [ ] `~Strikethrough~`
@@ -47,17 +47,19 @@ pdm add telegramify-markdown
 
 > [!NOTE]
 > Since mistletoe doesn't parse `- [] TODO` and Spoiler, we can't apply it.
-`~Strikethrough~` is incorrect, even if it comes from official documentation, please use `~~Strikethrough~~` format.
+`~Strikethrough~` is incorrect, even if it comes from telegram official documentation, its cant be parsed as
+> strikethrough.
 
 ## Use case
 
 ````python3
 import telegramify_markdown
-from telegramify_markdown.customize import markdown_symbol
+from telegramify_markdown import customize
 
-markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
-markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-md = """
+customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
+customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
+customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False or it will be converted to bold.
+markdown_text = """
 '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
 _ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
 **bold text**
@@ -82,8 +84,9 @@ This is `inline code`
     - Unordered sub-list.
 1. Actual numbers don't matter, just that it's a number
 """
-converted = telegramify_markdown.convert(md)
+converted = telegramify_markdown.convert(markdown_text)
 print(converted)
+# export Markdown to Telegram MarkdownV2 style.
 ````
 
 output as follows:

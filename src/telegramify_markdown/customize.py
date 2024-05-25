@@ -15,3 +15,4 @@ class Symbol(object):
 
 
 markdown_symbol = Symbol()
+strict_markdown = True
