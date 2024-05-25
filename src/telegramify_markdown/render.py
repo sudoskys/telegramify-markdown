@@ -3,6 +3,7 @@ from typing import Iterable
 from mistletoe import block_token, span_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
 from telebot import formatting
+
 from .customize import markdown_symbol
 
 
@@ -64,11 +65,14 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         yield formatting.escape_markdown("——" * 5)
 
     def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Fragment]:
-        token.delimiter = "_"
         return super().render_emphasis(token)
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        return self.embed_span(Fragment('*'), token.children)
+        # Telegram strong: *text* but __text__ for emphasis, so we need to check the delimiter
+        if token.delimiter == "*":
+            return self.embed_span(Fragment(token.delimiter * 1), token.children)
+        # __
+        return self.embed_span(Fragment(token.delimiter * 2), token.children)
 
     def render_strikethrough(
             self, token: span_token.Strikethrough
@@ -128,6 +132,13 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
 
     def render_auto_link(self, token: span_token.AutoLink) -> Iterable[Fragment]:
         yield Fragment(formatting.escape_markdown("<") + token.children[0].content + formatting.escape_markdown(">"))
+
+    def render_escape_sequence(
+            self, token: span_token.EscapeSequence
+    ) -> Iterable[Fragment]:
+        # 渲染转义字符
+        # because the escape_markdown already happened in the parser, we can skip it here.
+        yield Fragment("" + token.children[0].content)
 
     def render_table(
             self, token: block_token.Table, max_line_length: int

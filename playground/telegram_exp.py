@@ -2,6 +2,7 @@ from telebot import formatting
 
 
 def ignore(a):
+    print(a)
     pass
 
 
@@ -28,4 +29,6 @@ ignore(formatting.mstrikethrough("Hello, World!"))
 ignore(formatting.mcite("Hello, World!"))
 """>Hello, World\!"""
 ignore(formatting.escape_markdown("Hello, World!"))
+"""Hello, World\!"""
+ignore(formatting.escape_markdown("\(Hello, World!)"))
 """Hello, World\!"""
