@@ -13,6 +13,9 @@ Today, you can make it easier and customize it to achieve better results!
 
 I used a custom Render to achieve this, using a real environment server to verify the applicability of this tool.
 
+> Another JavaSpring version of the library with the same
+> name: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown)
+
 ## Installation
 
 ```bash
