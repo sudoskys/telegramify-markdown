@@ -38,9 +38,9 @@ pdm add telegramify-markdown
 - [x] Code Blocks
 - [x] `Inline Code`
 - [x] Block Quotes
-- [x] ~~Strikethrough~~
+- [x] `~~Strikethrough~~`
 - [ ] Task Lists
-- [ ] ~Strikethrough~
+- [ ] `~Strikethrough~`
 - [ ] ||Spoiler||
 - [ ] Tg Emoji
 - [ ] Tg User At
