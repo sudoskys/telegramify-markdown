@@ -45,6 +45,10 @@ pdm add telegramify-markdown
 - [ ] Tg Emoji
 - [ ] Tg User At
 
+> [!NOTE]
+> Since mistletoe doesn't parse TODO and Spoiler, we can't apply it.
+~Strikethrough~ is incorrect, even if it comes from official documentation, please use ~~Strikethrough~~ format.
+
 ## Use case
 
 ````python3
