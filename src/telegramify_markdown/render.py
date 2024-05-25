@@ -4,7 +4,7 @@ from mistletoe import block_token, span_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
 from telebot import formatting
 
-from .customize import markdown_symbol
+from .customize import markdown_symbol, strict_markdown
 
 
 class TelegramMarkdownRenderer(MarkdownRenderer):
@@ -68,11 +68,16 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         return super().render_emphasis(token)
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        # Telegram strong: *text* but __text__ for emphasis, so we need to check the delimiter
-        if token.delimiter == "*":
-            return self.embed_span(Fragment(token.delimiter * 1), token.children)
-        # __
-        return self.embed_span(Fragment(token.delimiter * 2), token.children)
+        if strict_markdown:
+            # Telegram strong: *text*
+            # Markdown strong: **text** or __text__
+            return self.embed_span(Fragment('*'), token.children)
+        else:
+            # bold
+            if token.delimiter == "*":
+                return self.embed_span(Fragment(token.delimiter * 1), token.children)
+            # underline
+            return self.embed_span(Fragment(token.delimiter * 2), token.children)
 
     def render_strikethrough(
             self, token: span_token.Strikethrough
