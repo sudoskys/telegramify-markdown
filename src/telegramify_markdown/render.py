@@ -68,11 +68,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         return super().render_emphasis(token)
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        # Telegram strong: *text* but __text__ for emphasis, so we need to check the delimiter
-        if token.delimiter == "*":
-            return self.embed_span(Fragment(token.delimiter * 1), token.children)
-        # __
-        return self.embed_span(Fragment(token.delimiter * 2), token.children)
+        # Telegram strong: *text*
+        # Markdown strong: **text** or __text__
+        return self.embed_span(Fragment('*'), token.children)
 
     def render_strikethrough(
             self, token: span_token.Strikethrough
