@@ -25,7 +25,7 @@ or if you use `pdm`:
 pdm add telegramify-markdown
 ```
 
-## Supported Features
+## Supported Input
 
 - [x] Headings (1-6)
 - [x] Links [text](url)
@@ -47,7 +47,7 @@ pdm add telegramify-markdown
 
 > [!NOTE]
 > Since mistletoe doesn't parse `- [] TODO` and Spoiler, we can't apply it.
-`~Strikethrough~` is incorrect, even if it comes from official documentation, please use `~~Strikethrough~~` format.
+`~Strikethrough~` is incorrect, even if it comes from telegram official documentation, its cant be parsed as strikethrough.
 
 ## Use case
 
@@ -84,6 +84,7 @@ This is `inline code`
 """
 converted = telegramify_markdown.convert(md)
 print(converted)
+# export Markdown to Telegram MarkdownV2 style.
 ````
 
 output as follows:
