@@ -25,6 +25,26 @@ or if you use `pdm`:
 pdm add telegramify-markdown
 ```
 
+## Supported Features
+
+- [x] Headings (1-6)
+- [x] Links [text](url)
+- [x] Images ![alt]
+- [x] Lists (Ordered, Unordered)
+- [x] Tables |-|-|
+- [x] Horizontal Rule ----
+- [x] *Text* **Styles**
+- [x] __Underline__
+- [x] Code Blocks
+- [x] `Inline Code`
+- [x] Block Quotes
+- [x] ~~Strikethrough~~
+- [ ] Task Lists
+- [ ] ~Strikethrough~
+- [ ] ||Spoiler||
+- [ ] Tg Emoji
+- [ ] Tg User At
+
 ## Use case
 
 ````python3
@@ -34,17 +54,29 @@ from telegramify_markdown.customize import markdown_symbol
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = """
-# 一级标题 `c!ode` # 一级标题 `code`
-[Link!AA](https://www.example.com)
-
-[key!]: https://www.google.com "a title!"
-
-[这是!链接2][asd!asd](https://www.example.com)
-[rttt]()
-![PIC](https://www.example.com/image.jpg)
-1. Order!ed
-   1. Order!ed sub
-- Unord*-.ered
+'\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
+_ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
+**bold text**
+*bold text*
+_italic text_
+__underline__
+~no valid strikethrough~
+~~strikethrough~~
+||spoiler||
+*bold _italic bold ~~italic bold strikethrough ||italic bold strikethrough spoiler||~~ __underline italic bold___ bold*
+__underline italic bold__
+[link](https://www.google.com)
+- [ ] Uncompleted task list item
+- [x] Completed task list item
+> Quote
+```python
+print("Hello, World!")
+```
+This is `inline code`
+1. First ordered list item
+2. Another item
+    - Unordered sub-list.
+1. Actual numbers don't matter, just that it's a number
 """
 converted = telegramify_markdown.convert(md)
 print(converted)
@@ -52,19 +84,4 @@ print(converted)
 
 output as follows:
 
-```markdown
-*📌 一级标题 `c\!ode` \# 一级标题 `code`*
-[Link\!AA](https://www\.example\.com)
-
-🔗[a title\!](https://www\.google\.com)
-
-\[这是\!链接2\][asd\!asd](https://www\.example\.com)
-[rttt]()
-🖼[PIC](https://www\.example\.com/image\.jpg)
-1\. Order\!ed
-1\. Order\!ed sub
-⦁ Unord\*\-\.ered
-```
-
-> Note: Telegram Server automatically processes the double of `\`(`\\`) again (even after escaping), which is beyond the
-> control of us.
+![.github/result.png](.github/result.png)

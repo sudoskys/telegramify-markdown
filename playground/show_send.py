@@ -6,33 +6,29 @@ from telebot import TeleBot
 import telegramify_markdown
 
 md = """
-In all other places characters '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' must be escaped with the preceding character '\'.
-
-
-In all other places characters '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!' must be escaped with the preceding character '\'.
-
-*bold \*text*
-_italic \*text_
+'\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
+_ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
+**bold text**
+*bold text*
+_italic text_
 __underline__
-~strikethrough~
+~no valid strikethrough~
+~~strikethrough~~
 ||spoiler||
-*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
-__underline italic bold___
-[inline URL](http://www.example.com/)
-[inline mention of a user](tg://user?id=123456789)
-![👍](tg://emoji?id=5368324170671202286)
-`inline fixed-width code`
+*bold _italic bold ~~italic bold strikethrough ||italic bold strikethrough spoiler||~~ __underline italic bold___ bold*
+__underline italic bold__
+[link](https://www.google.com)
+- [ ] Uncompleted task list item
+- [x] Completed task list item
+> Quote
+```python
+print("Hello, World!")
 ```
-pre-formatted fixed-width code block
-```
-```lua
-pre-formatted fixed-width code block written in the Python programming language
-```
->Block quotation started
->Block quotation continued
->The last line of the block quotation**
->The second block quotation started right after the previous\r
->The third block quotation started right after the previous
+This is `inline code`
+1. First ordered list item
+2. Another item
+    - Unordered sub-list.
+1. Actual numbers don't matter, just that it's a number
 """
 converted = telegramify_markdown.convert(md)
 print(converted)
