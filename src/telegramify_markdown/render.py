@@ -68,7 +68,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         return super().render_emphasis(token)
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        return self.embed_span(Fragment(token.delimiter * 1), token.children)
+        return self.embed_span(Fragment('*'), token.children)
 
     def render_strikethrough(
             self, token: span_token.Strikethrough
