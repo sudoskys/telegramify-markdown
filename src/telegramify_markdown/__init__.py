@@ -1,4 +1,3 @@
-import os
 from typing import Union
 
 import mistletoe
@@ -10,16 +9,24 @@ from telebot import formatting
 from .render import TelegramMarkdownRenderer
 
 
+def markdownify(text: str):
+    # '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
+    # if text in ["_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"]:
+    #     return text
+    return formatting.escape_markdown(text)
+
+
 def _update_text(token: Union[SpanToken, BlockToken]):
     """Update the text contents of a span token and its children.
     `InlineCode` tokens are left unchanged."""
     if isinstance(token, ThematicBreak):
         token.line = formatting.escape_markdown("————————")
+        pass
     elif isinstance(token, LinkReferenceDefinition):
         pass
     else:
         assert hasattr(token, "content"), f"Token {token} has no content attribute"
-        token.content = formatting.escape_markdown(token.content)
+        token.content = markdownify(token.content)
 
 
 def _update_block(token: BlockToken):
