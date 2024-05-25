@@ -38,16 +38,16 @@ pdm add telegramify-markdown
 - [x] Code Blocks
 - [x] `Inline Code`
 - [x] Block Quotes
-- [x] ~~Strikethrough~~
+- [x] `~~Strikethrough~~`
 - [ ] Task Lists
-- [ ] ~Strikethrough~
+- [ ] `~Strikethrough~`
 - [ ] ||Spoiler||
 - [ ] Tg Emoji
 - [ ] Tg User At
 
 > [!NOTE]
-> Since mistletoe doesn't parse TODO and Spoiler, we can't apply it.
-~Strikethrough~ is incorrect, even if it comes from official documentation, please use ~~Strikethrough~~ format.
+> Since mistletoe doesn't parse `- [] TODO` and Spoiler, we can't apply it.
+`~Strikethrough~` is incorrect, even if it comes from official documentation, please use `~~Strikethrough~~` format.
 
 ## Use case
 
