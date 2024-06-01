@@ -1,13 +1,12 @@
 [project]
 name = "telegramify-markdown"
-version = "0.1.4"
+version = "0.1.5"
 description = "Convert Markdown to a format usable by Telegram."
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
     "mistletoe==1.3.0",
-    "pytelegrambotapi>=4.16.1",
     "emoji>=2.10.1",
 ]
 requires-python = ">=3.8"
@@ -26,6 +25,7 @@ distribution = true
 dev = [
     "loguru>=0.7.2",
     "python-dotenv>=1.0.1",
+    "pytelegrambotapi>=4.18.1",
 ]
 [tool.pdm.scripts]
 test = "python -m unittest discover -s ./tests -p *_test.py"
