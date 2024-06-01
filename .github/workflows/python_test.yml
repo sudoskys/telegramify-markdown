@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [ '3.11', '3.10', '3.9' ]
+        python-version: [ '3.11' ] # DO NOT disturb telegram server...
         os: [ ubuntu-latest ] #, windows-latest ] #, macos-latest
 
     steps:
