@@ -1,3 +1,5 @@
+import html
+import re
 from typing import Iterable
 
 from mistletoe import block_token, span_token
@@ -5,6 +7,29 @@ from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinitio
 from telebot import formatting
 
 from .customize import markdown_symbol, strict_markdown
+
+
+def escape_markdown(content: str, unescape_html: bool = True) -> str:
+    """
+    Escapes Markdown characters in a string of Markdown with optional HTML unescaping.
+
+    :param content: The string of Markdown to escape.
+    :type content: str
+    :param unescape_html: Whether to unescape HTML entities before escaping, defaults to True.
+    :type unescape_html: bool, optional
+    :return: The escaped string.
+    :rtype: str
+    """
+    if not content:
+        return ""
+    # Unescape HTML entities if specified
+    if unescape_html:
+        content = html.unescape(content)
+    # First pass to escape all markdown special characters
+    escaped_content = re.sub(r"([_*\[\]()~`>\#\+\-=|{}\.!\\])", r"\\\1", content)
+    # Second pass to remove double escaping
+    final_content = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|{}\.!\\])", r"\\\1", escaped_content)
+    return final_content
 
 
 class TelegramMarkdownRenderer(MarkdownRenderer):
