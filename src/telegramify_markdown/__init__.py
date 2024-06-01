@@ -5,6 +5,7 @@ from mistletoe.block_token import BlockToken, ThematicBreak
 from mistletoe.markdown_renderer import LinkReferenceDefinition
 from mistletoe.span_token import SpanToken
 
+from . import customize
 from .render import TelegramMarkdownRenderer, escape_markdown
 
 __all__ = [
@@ -15,22 +16,17 @@ __all__ = [
 ]
 
 
-def markdownify(text: str, unescape_html: bool = True) -> str:
-    # '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
-    return escape_markdown(text, unescape_html=unescape_html)
-
-
 def _update_text(token: Union[SpanToken, BlockToken]):
     """Update the text contents of a span token and its children.
     `InlineCode` tokens are left unchanged."""
     if isinstance(token, ThematicBreak):
-        token.line = markdownify("————————")
+        token.line = escape_markdown("————————")
         pass
     elif isinstance(token, LinkReferenceDefinition):
         pass
     else:
         assert hasattr(token, "content"), f"Token {token} has no content attribute"
-        token.content = markdownify(token.content)
+        token.content = escape_markdown(token.content, unescape_html=customize.unescape_html)
 
 
 def _update_block(token: BlockToken):
@@ -44,9 +40,15 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-def convert(content: str):
+def convert(content: str) -> str:
     with TelegramMarkdownRenderer() as renderer:
         document = mistletoe.Document(content)
         _update_block(document)
         result = renderer.render(document)
     return result
+
+
+def markdownify(content: str) -> str:
+    # '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
+    # simple warp for the markdownify function
+    return convert(content)

@@ -91,7 +91,7 @@ This is `inline code`
     - Unordered sub-list.
 1. Actual numbers don't matter, just that it's a number
 """
-converted = telegramify_markdown.convert(markdown_text)
+converted = telegramify_markdown.markdownify(markdown_text)
 print(converted)
 # export Markdown to Telegram MarkdownV2 style.
 ````
