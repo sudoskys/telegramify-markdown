@@ -16,7 +16,7 @@ parsing and reconstruction. Now, you can easily handle this and customize it for
 
 Utilizing a custom renderer, the library has been tested in a real server environment to ensure its efficacy.
 
-> For those interested, there is also a Java Spring version of the library with the same
+> For those interested, there is also a Node.js version of the library with the same
 > name: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown)
 
 ## Installation
