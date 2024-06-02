@@ -4,6 +4,7 @@ from typing import Iterable
 
 from mistletoe import block_token, span_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
+from telebot import formatting
 
 from .customize import markdown_symbol, strict_markdown
 
