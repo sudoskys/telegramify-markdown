@@ -27,5 +27,6 @@ dev = [
     "loguru>=0.7.2",
     "python-dotenv>=1.0.1",
 ]
+
 [tool.pdm.scripts]
 test = "python -m unittest discover -s ./tests -p *_test.py"

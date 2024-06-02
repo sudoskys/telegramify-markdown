@@ -7,8 +7,7 @@ import telegramify_markdown
 
 telegramify_markdown.customize.strict_markdown = False  # we need send underline text
 run_1 = telegramify_markdown.markdownify(
-    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;",
-    unescape_html=True
+    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;"
 )
 print(run_1)
 md = """
