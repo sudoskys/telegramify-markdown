@@ -128,15 +128,6 @@ files = [
 ]
 
 [[package]]
-name = "html"
-version = "1.16"
-summary = ""
-groups = ["default"]
-files = [
-    {file = "html-1.16.tar.gz", hash = "sha256:ebc768f23b54a71350d731a75f2ef3a4a4dbdad9ae68d58b527664b66088e456"},
-]
-
-[[package]]
 name = "idna"
 version = "3.7"
 requires_python = ">=3.5"
