@@ -17,3 +17,4 @@ class Symbol(object):
 markdown_symbol = Symbol()
 strict_markdown = True
 unescape_html = False
+max_line_length = 20
