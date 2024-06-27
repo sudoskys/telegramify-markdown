@@ -6,7 +6,7 @@ from mistletoe import block_token, span_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
 from telebot import formatting
 
-from .customize import markdown_symbol, strict_markdown
+from .customize import markdown_symbol, strict_markdown, max_line_length
 
 
 def escape_markdown(content: str, unescape_html: bool = True) -> str:
@@ -140,7 +140,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_link_or_image(
             self, token: span_token.SpanToken, target: str
     ) -> Iterable[Fragment]:
-        title = next(self.span_to_lines(token.children, max_line_length=20), "")
+        title = next(self.span_to_lines(token.children, max_line_length=max_line_length), "")
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
             # "[" description "](" dest_part [" " title] ")"
             # "[" description "](" dest_part [" " title] ")"

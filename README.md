@@ -66,6 +66,7 @@ from telegramify_markdown import customize
 customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False or it will be converted to bold.
+customize.max_line_length = 25 # If you want to change the max line length for links, images, and other elements, set it to the desired value.
 markdown_text = """
 '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
 _ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
