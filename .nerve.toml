@@ -1,0 +1,5 @@
+contributor = "241287f5-e5a1-4d22-b56a-964b295466d7"
+language = "English"
+issue_auto_label = true
+issue_auto_tidy = true
+issue_close_with_report = true
