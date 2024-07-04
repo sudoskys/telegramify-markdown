@@ -40,15 +40,22 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-def convert(content: str) -> str:
-    with TelegramMarkdownRenderer() as renderer:
+def markdownify(
+        content: str,
+        max_line_length: int = None,
+        normalize_whitespace=False
+) -> str:
+    with TelegramMarkdownRenderer(
+            max_line_length=max_line_length,
+            normalize_whitespace=normalize_whitespace
+    ) as renderer:
         document = mistletoe.Document(content)
         _update_block(document)
         result = renderer.render(document)
     return result
 
 
-def markdownify(content: str) -> str:
+def convert(content: str) -> str:
     # '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
     # simple warp for the markdownify function
-    return convert(content)
+    return markdownify(content)
