@@ -1,9 +1,9 @@
 from typing import Union
 
 import mistletoe
-from mistletoe.block_token import BlockToken, ThematicBreak
+from mistletoe.block_token import BlockToken, ThematicBreak  # noqa
 from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
-from mistletoe.span_token import SpanToken
+from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
 from .render import TelegramMarkdownRenderer, escape_markdown
