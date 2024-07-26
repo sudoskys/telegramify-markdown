@@ -1,12 +1,12 @@
 [project]
 name = "telegramify-markdown"
-version = "0.1.8"
+version = "0.1.9"
 description = "Convert Markdown to a format usable by Telegram."
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
-    "mistletoe==1.3.0",
+    "mistletoe==1.4.0",
     "emoji>=2.10.1",
     "pytelegrambotapi>=4.18.1",
 ]
