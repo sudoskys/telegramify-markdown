@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:ffac5b9964b07e8cc75a5af38faaaaaaca02adf6723db8d4644099053205c500"
+content_hash = "sha256:7fceed54845b06af5f87c58b37992e3d2f0c15d0f5d61a2bbd764604c90f10ba"
 
 [[package]]
 name = "certifi"
@@ -158,13 +158,13 @@ files = [
 
 [[package]]
 name = "mistletoe"
-version = "1.3.0"
+version = "1.4.0"
 requires_python = "~=3.5"
 summary = "A fast, extensible Markdown parser in pure Python."
 groups = ["default"]
 files = [
-    {file = "mistletoe-1.3.0-py3-none-any.whl", hash = "sha256:a0710d0cdb7d2458cef91cf6b9b897db442927f8778dae890cbbfb1853a51700"},
-    {file = "mistletoe-1.3.0.tar.gz", hash = "sha256:bd0e788add9b4478d19ec792f6d5fb908a20e70abfe61193f29178c55d3adbe9"},
+    {file = "mistletoe-1.4.0-py3-none-any.whl", hash = "sha256:44a477803861de1237ba22e375c6b617690a31d2902b47279d1f8f7ed498a794"},
+    {file = "mistletoe-1.4.0.tar.gz", hash = "sha256:1630f906e5e4bbe66fdeb4d29d277e2ea515d642bb18a9b49b136361a9818c9d"},
 ]
 
 [[package]]
