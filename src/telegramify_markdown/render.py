@@ -1,12 +1,18 @@
 import html
 import re
+from itertools import chain
 from typing import Iterable
 
 from mistletoe import block_token, span_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
+from mistletoe.span_token import SpanToken
 from telebot import formatting
 
 from .customize import markdown_symbol, strict_markdown
+
+
+class Spoiler(SpanToken):
+    pattern = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
 
 
 def escape_markdown(content: str, unescape_html: bool = True) -> str:
@@ -33,6 +39,17 @@ def escape_markdown(content: str, unescape_html: bool = True) -> str:
 
 
 class TelegramMarkdownRenderer(MarkdownRenderer):
+
+    def __init__(self, *extras, **kwargs):
+        super().__init__(
+            *chain(
+                (
+                    Spoiler,
+                ),
+                extras
+            )
+        )
+        self.render_map["Spoiler"] = self.render_spoiler
 
     def render_heading(
             self, token: block_token.Heading, max_line_length: int
@@ -110,6 +127,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             self, token: span_token.Strikethrough
     ) -> Iterable[Fragment]:
         return self.embed_span(Fragment("~"), token.children)
+
+    def render_spoiler(self, token: Spoiler) -> Iterable[Fragment]:
+        return self.embed_span(Fragment("||"), token.children)
 
     def render_list_item(
             self, token: block_token.ListItem, max_line_length: int

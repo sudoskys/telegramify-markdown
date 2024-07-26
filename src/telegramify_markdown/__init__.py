@@ -2,7 +2,7 @@ from typing import Union
 
 import mistletoe
 from mistletoe.block_token import BlockToken, ThematicBreak
-from mistletoe.markdown_renderer import LinkReferenceDefinition
+from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken
 
 from . import customize
@@ -24,6 +24,8 @@ def _update_text(token: Union[SpanToken, BlockToken]):
         pass
     elif isinstance(token, LinkReferenceDefinition):
         pass
+    elif isinstance(token, BlankLine):
+        pass
     else:
         assert hasattr(token, "content"), f"Token {token} has no content attribute"
         token.content = escape_markdown(token.content, unescape_html=customize.unescape_html)
@@ -32,7 +34,7 @@ def _update_text(token: Union[SpanToken, BlockToken]):
 def _update_block(token: BlockToken):
     """Update the text contents of paragraphs and headings within this block,
     and recursively within its children."""
-    if hasattr(token, "children"):
+    if hasattr(token, "children") and token.children:
         # Dispatch all children
         for child in token.children:
             _update_block(child)
