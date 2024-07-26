@@ -47,14 +47,14 @@ pdm add telegramify-markdown
 - [x] Inline Code
 - [x] Block Quotes `>`
 - [x] Strikethrough `~~Strikethrough~~`
+- [x] Spoilers `||Spoiler||`
 - [ ] Task Lists
 - [ ] Strikethrough `~Strikethrough~`
-- [ ] Spoilers `||Spoiler||`
 - [ ] Telegram Emojis
 - [ ] Telegram User Mentions
 
 > [!NOTE]  
-> Since mistletoe doesn't parse `- [ ] TODO` or Spoilers, we can't implement them.  
+> Since mistletoe doesn't parse `- [ ] TODO`, we can't implement it.  
 > Despite `~Strikethrough~` being mentioned in Telegram's official documentation, it can't be parsed as strikethrough.
 
 ## Use case
@@ -102,4 +102,4 @@ print(converted)
 
 output as follows:
 
-![.github/result.png](.github/result.png)
+![.github/result.png](.github/result-2.png)
