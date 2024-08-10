@@ -7,7 +7,6 @@ authors = [
 ]
 dependencies = [
     "mistletoe==1.4.0",
-    "emoji>=2.10.1",
     "pytelegrambotapi>=4.18.1",
 ]
 requires-python = ">=3.8"

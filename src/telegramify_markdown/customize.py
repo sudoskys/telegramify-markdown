@@ -1,17 +1,16 @@
-import emoji
-
-
 class Symbol(object):
-    head_level_1 = emoji.emojize(":pushpin:")
+    head_level_1 = "\N{PUSHPIN}"
     # "📌"
-    head_level_2 = emoji.emojize(":pencil:")
-    # "✏"
-    head_level_3 = emoji.emojize(":books:")
+    head_level_2 = "\N{PENCIL}"
+    # "✏️"
+    head_level_3 = "\N{BOOKS}"
     # "📚"
-    head_level_4 = emoji.emojize(":bookmark:")
-    # "📒"
-    image = "🖼"
-    link = "🔗"
+    head_level_4 = "\N{BOOKMARK}"
+    # "🔖"
+    image = "\N{FRAME WITH PICTURE}"
+    # "🖼"
+    link = "\N{LINK SYMBOL}"
+    # "🔗"
 
 
 markdown_symbol = Symbol()
