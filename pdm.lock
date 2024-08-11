@@ -3,9 +3,12 @@
 
 [metadata]
 groups = ["default", "dev"]
-strategy = ["cross_platform", "inherit_metadata"]
-lock_version = "4.4.1"
-content_hash = "sha256:7fceed54845b06af5f87c58b37992e3d2f0c15d0f5d61a2bbd764604c90f10ba"
+strategy = ["inherit_metadata"]
+lock_version = "4.5.0"
+content_hash = "sha256:e6272602386ebd900fc85c1efa3805fd0f2be20b8ca0e9b4d7083e047df42461"
+
+[[metadata.targets]]
+requires_python = ">=3.8"
 
 [[package]]
 name = "certifi"
@@ -117,20 +120,6 @@ files = [
 ]
 
 [[package]]
-name = "emoji"
-version = "2.12.1"
-requires_python = ">=3.7"
-summary = "Emoji for Python"
-groups = ["default"]
-dependencies = [
-    "typing-extensions>=4.7.0",
-]
-files = [
-    {file = "emoji-2.12.1-py3-none-any.whl", hash = "sha256:a00d62173bdadc2510967a381810101624a2f0986145b8da0cffa42e29430235"},
-    {file = "emoji-2.12.1.tar.gz", hash = "sha256:4aa0488817691aa58d83764b6c209f8a27c0b3ab3f89d1b8dceca1a62e4973eb"},
-]
-
-[[package]]
 name = "idna"
 version = "3.7"
 requires_python = ">=3.5"
@@ -148,6 +137,7 @@ requires_python = ">=3.5"
 summary = "Python logging made (stupidly) simple"
 groups = ["dev"]
 dependencies = [
+    "aiocontextvars>=0.2.0; python_version < \"3.7\"",
     "colorama>=0.3.4; sys_platform == \"win32\"",
     "win32-setctime>=1.0.0; sys_platform == \"win32\"",
 ]
@@ -169,7 +159,7 @@ files = [
 
 [[package]]
 name = "pytelegrambotapi"
-version = "4.21.0"
+version = "4.22.0"
 requires_python = ">=3.8"
 summary = "Python Telegram bot api."
 groups = ["default"]
@@ -177,8 +167,8 @@ dependencies = [
     "requests",
 ]
 files = [
-    {file = "pytelegrambotapi-4.21.0-py3-none-any.whl", hash = "sha256:686813e4d4f9e917530cd9cd411d62265293f12783294ebef87f8a1fe195b262"},
-    {file = "pytelegrambotapi-4.21.0.tar.gz", hash = "sha256:b32cde09f295f80330253cc185104f02c4d70041782d3524c4cc424abbaba636"},
+    {file = "pytelegrambotapi-4.22.0-py3-none-any.whl", hash = "sha256:47bf3ebb233725636d684aec2dd8e75d296011c41f68c9e644707cb991b0db22"},
+    {file = "pytelegrambotapi-4.22.0.tar.gz", hash = "sha256:d386f9969869ea09404897d71dbc967c8f31394cfadefa266ab3a323f5d57215"},
 ]
 
 [[package]]
@@ -207,17 +197,6 @@ dependencies = [
 files = [
     {file = "requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6"},
     {file = "requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760"},
-]
-
-[[package]]
-name = "typing-extensions"
-version = "4.12.2"
-requires_python = ">=3.8"
-summary = "Backported and Experimental Type Hints for Python 3.8+"
-groups = ["default"]
-files = [
-    {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
-    {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
 
 [[package]]
