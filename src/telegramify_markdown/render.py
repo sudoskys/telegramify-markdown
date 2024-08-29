@@ -58,7 +58,8 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         lines = self.blocks_to_lines(
             token.children, max_line_length=max_child_line_length
         )
-        return self.prefix_lines(lines or [""], ">")  # Remove the space after the >
+        # NOTE: Remove the space after the > , but it is not standard markdown
+        return self.prefix_lines(lines or [""], ">")
 
     def render_heading(
             self, token: block_token.Heading, max_line_length: int
