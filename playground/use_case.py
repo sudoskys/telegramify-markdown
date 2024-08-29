@@ -8,12 +8,13 @@ markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = """*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
 ~strikethrough~
 """
+quote = """>test"""
 
 test_md = """
 **bold text**
 ||spoiler||
 """
-converted = telegramify_markdown.convert(md)
+converted = telegramify_markdown.convert(quote)
 print(converted)
 
 rule = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
