@@ -51,6 +51,15 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         )
         self.render_map["Spoiler"] = self.render_spoiler
 
+    def render_quote(
+            self, token: block_token.Quote, max_line_length: int
+    ) -> Iterable[str]:
+        max_child_line_length = max_line_length - 2 if max_line_length else None
+        lines = self.blocks_to_lines(
+            token.children, max_line_length=max_child_line_length
+        )
+        return self.prefix_lines(lines or [""], ">")  # Remove the space after the >
+
     def render_heading(
             self, token: block_token.Heading, max_line_length: int
     ) -> Iterable[str]:
