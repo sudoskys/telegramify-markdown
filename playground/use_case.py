@@ -11,7 +11,7 @@ md = """*bold _italic bold ~italic bold strikethrough ||italic bold strikethroug
 quote = """>test"""
 task = """
 - [x] task1?
-- [x] task2?
+-- [x] task2?
 """
 test_md = """
 **bold text**
