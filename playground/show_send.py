@@ -28,8 +28,12 @@ __underline__
 *bold _italic bold ~~italic bold strikethrough ||italic bold strikethrough spoiler||~~ __underline italic bold___ bold*
 __underline italic bold__
 [link](https://www.google.com)
+
 - [ ] Uncompleted task list item
+- [ ] __Underline__ ~~Strikethrough~~ _italic_ Item
 - [x] Completed task list item
+- [x] **Bold** ||Spoiler|| `Inline Code` Item
+
 > Quote
 
 > Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it.

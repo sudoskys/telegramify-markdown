@@ -9,12 +9,15 @@ md = """*bold _italic bold ~italic bold strikethrough ||italic bold strikethroug
 ~strikethrough~
 """
 quote = """>test"""
-
+task = """
+- [ ] task
+- [x] task
+"""
 test_md = """
 **bold text**
 ||spoiler||
 """
-converted = telegramify_markdown.convert(quote)
+converted = telegramify_markdown.convert(task)
 print(converted)
 
 rule = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)

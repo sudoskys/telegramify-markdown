@@ -15,6 +15,14 @@ class Spoiler(SpanToken):
     pattern = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
 
 
+class UncompletedTask(SpanToken):
+    pattern = re.compile(r"(?<!\\)(?:\\\\)*\[\s\](.+)", re.MULTILINE)
+
+
+class CompletedTask(SpanToken):
+    pattern = re.compile(r"(?<!\\)(?:\\\\)*\[x\](.+)", re.MULTILINE | re.IGNORECASE)
+
+
 def escape_markdown(content: str, unescape_html: bool = True) -> str:
     """
     Escapes Markdown characters in a string of Markdown with optional HTML unescaping.
@@ -45,6 +53,8 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             *chain(
                 (
                     Spoiler,
+                    UncompletedTask,
+                    CompletedTask,
                 ),
                 extras
             )
@@ -141,13 +151,31 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_spoiler(self, token: Spoiler) -> Iterable[Fragment]:
         return self.embed_span(Fragment("||"), token.children)
 
+    def render_uncompleted_task(self, token: UncompletedTask) -> Iterable[Fragment]:
+        yield Fragment("\N{BALLOT BOX WITH CHECK}")
+        yield from self.make_fragments(token.children)
+
+    def render_completed_task(self, token: CompletedTask) -> Iterable[Fragment]:
+        yield Fragment("\N{WHITE HEAVY CHECK MARK}")
+        yield from self.make_fragments(token.children)
+
     def render_list_item(
             self, token: block_token.ListItem, max_line_length: int
     ) -> Iterable[str]:
-        if str(token.leader).strip().endswith("."):
+        try:
+            start = next(self.blocks_to_lines(token.children, max_line_length=max_line_length), "")
+        except Exception as e:
+            start = ""
+        token_origin = str(token.leader).strip()
+        if token_origin.endswith("."):
             token.leader = formatting.escape_markdown(token.leader) + " "
         else:
             token.leader = formatting.escape_markdown("⦁")
+            if token_origin.startswith("-"):
+                if start.strip().startswith("\N{WHITE HEAVY CHECK MARK}"):
+                    token.leader = ""
+                elif start.strip().startswith("\N{BALLOT BOX WITH CHECK}"):
+                    token.leader = ""
         return super().render_list_item(token, max_line_length)
 
     def render_link_reference_definition(
