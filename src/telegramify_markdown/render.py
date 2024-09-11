@@ -152,11 +152,11 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         return self.embed_span(Fragment("||"), token.children)
 
     def render_uncompleted_task(self, token: UncompletedTask) -> Iterable[Fragment]:
-        yield Fragment("\N{BALLOT BOX WITH CHECK}")
+        yield Fragment(markdown_symbol.task_uncompleted)
         yield from self.make_fragments(token.children)
 
     def render_completed_task(self, token: CompletedTask) -> Iterable[Fragment]:
-        yield Fragment("\N{WHITE HEAVY CHECK MARK}")
+        yield Fragment(markdown_symbol.task_completed)
         yield from self.make_fragments(token.children)
 
     def render_list_item(
@@ -172,9 +172,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         else:
             token.leader = formatting.escape_markdown("⦁")
             if token_origin.startswith("-"):
-                if start.strip().startswith("\N{WHITE HEAVY CHECK MARK}"):
-                    token.leader = ""
-                elif start.strip().startswith("\N{BALLOT BOX WITH CHECK}"):
+                if start.strip().startswith((markdown_symbol.task_completed, markdown_symbol.task_uncompleted)):
                     token.leader = ""
         return super().render_list_item(token, max_line_length)
 
@@ -182,12 +180,13 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             self, token: LinkReferenceDefinition
     ) -> Iterable[Fragment]:
         yield from (
-            Fragment(markdown_symbol.link + formatting.mlink(
-                content=token.title if token.title else token.label,
-                url=token.dest,
-                escape=True
-            )
-                     ),
+            Fragment(
+                markdown_symbol.link + formatting.mlink(
+                    content=token.title if token.title else token.label,
+                    url=token.dest,
+                    escape=True
+                )
+            ),
         )
 
     def render_image(self, token: span_token.Image) -> Iterable[Fragment]:
