@@ -4,6 +4,7 @@ from itertools import chain
 from typing import Iterable
 
 from mistletoe import block_token, span_token
+from mistletoe.block_token import BlockToken
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
 from mistletoe.span_token import SpanToken
 from telebot import formatting
@@ -13,6 +14,39 @@ from .customize import markdown_symbol, strict_markdown
 
 class Spoiler(SpanToken):
     pattern = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
+
+
+class TaskListItem(BlockToken):
+    """
+    Custom block token for task list items in Markdown.
+    Matches task list items like '- [ ]' and '- [x]'.
+
+    Attributes:
+        checked (bool): whether the task is checked.
+        content (str): the description of the task list item.
+    """
+    repr_attributes = BlockToken.repr_attributes + ("checked", "content")
+    pattern = re.compile(r'^( *)(- \[([ xX])\] )(.*)')
+
+    def __init__(self, match):
+        self.indentation, self.marker, self.checked_char, self.content = match
+        self.checked = self.checked_char.lower() == 'x'
+        super().__init__(lines=self.content, tokenize_func=span_token.tokenize_inner)
+
+    @classmethod
+    def start(cls, line):
+        stripped = line.lstrip()
+        if not stripped.startswith("- [ ]") and not stripped.startswith("- [x]"):
+            return False
+        return bool(cls.pattern.match(line))
+
+    @classmethod
+    def read(cls, lines):
+        line = next(lines)
+        match = cls.pattern.match(line)
+        if match:
+            return match.groups()
+        raise ValueError("TaskListItem did not match expected format.")
 
 
 def escape_markdown(content: str, unescape_html: bool = True) -> str:
@@ -45,11 +79,13 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             *chain(
                 (
                     Spoiler,
+                    TaskListItem,
                 ),
                 extras
             )
         )
         self.render_map["Spoiler"] = self.render_spoiler
+        self.render_map["TaskListItem"] = self.render_task_list_item
 
     def render_quote(
             self, token: block_token.Quote, max_line_length: int
@@ -141,10 +177,26 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_spoiler(self, token: Spoiler) -> Iterable[Fragment]:
         return self.embed_span(Fragment("||"), token.children)
 
+    def render_task_list_item(self,
+                              token: TaskListItem,
+                              max_line_length: int
+                              ) -> Iterable[str]:
+        symbol = markdown_symbol.task_completed if token.checked else markdown_symbol.task_uncompleted
+        if self.normalize_whitespace:
+            indentation = 0
+        else:
+            indentation = len(token.indentation)
+        lines = self.span_to_lines(
+            token.children, max_line_length=max_line_length
+        )
+        space = " " * indentation
+        return self.prefix_lines(lines or [""], f"{space}{symbol} ")
+
     def render_list_item(
             self, token: block_token.ListItem, max_line_length: int
     ) -> Iterable[str]:
-        if str(token.leader).strip().endswith("."):
+        token_origin = str(token.leader).strip()
+        if token_origin.endswith("."):
             token.leader = formatting.escape_markdown(token.leader) + " "
         else:
             token.leader = formatting.escape_markdown("⦁")
@@ -154,12 +206,13 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             self, token: LinkReferenceDefinition
     ) -> Iterable[Fragment]:
         yield from (
-            Fragment(markdown_symbol.link + formatting.mlink(
-                content=token.title if token.title else token.label,
-                url=token.dest,
-                escape=True
-            )
-                     ),
+            Fragment(
+                markdown_symbol.link + formatting.mlink(
+                    content=token.title if token.title else token.label,
+                    url=token.dest,
+                    escape=True
+                )
+            ),
         )
 
     def render_image(self, token: span_token.Image) -> Iterable[Fragment]:

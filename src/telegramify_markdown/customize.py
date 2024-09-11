@@ -11,6 +11,10 @@ class Symbol(object):
     # "🖼"
     link = "\N{LINK SYMBOL}"
     # "🔗"
+    task_completed = "\N{WHITE HEAVY CHECK MARK}"
+    # "✅"
+    task_uncompleted = "\N{BALLOT BOX WITH CHECK}"
+    # "☑️"
 
 
 markdown_symbol = Symbol()
