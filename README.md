@@ -122,3 +122,30 @@ output as follows:
 |---------------------------------|---------------------------------|
 | ![result](.github/result-5.png) | ![result](.github/result-6.png) |
 
+## Proper Usage
+
+```python
+import textwrap
+
+from telebot import TeleBot
+
+import telegramify_markdown
+import telegramify_markdown.customize as customize
+
+customize.strict_markdown = False
+value1 = 52222
+markdown_text = textwrap.dedent(
+    f"""
+    # Title
+    ## Subtitle
+    value1: {value1}
+    ||spoiler||
+    """
+)
+can_be_sent = telegramify_markdown.markdownify(markdown_text)
+TeleBot("TOKEN").send_message(
+    "CHAT_ID",
+    can_be_sent,
+    parse_mode="MarkdownV2"
+)
+```
