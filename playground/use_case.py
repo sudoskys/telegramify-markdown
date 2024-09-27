@@ -11,7 +11,12 @@ md = """*bold _italic bold ~italic bold strikethrough ||italic bold strikethroug
 quote = """>test"""
 task = """
 - [x] task1?
-- [x] task2?
+-- [x] task2?
+
+\\\\( T\\(n\\) \\= 100^\\{10\\} \\\\) 用大 O 记号表示。\\~\\[RULE\\]\n\n观察此函数可知，它是一个常数
+
+>1231
+
 """
 test_md = """
 **bold text**

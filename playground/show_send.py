@@ -15,6 +15,13 @@ md = """
 ## Subtitle
 ### Subsubtitle
 #### Subsubsubtitle
+
+\(TEST
+\\(TEST
+\\\(TEST
+\\\\(TEST
+\\\\\(TEST
+
 '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
 _ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
 We will remove the \ symbol from the original text.
@@ -28,15 +35,18 @@ __underline__
 *bold _italic bold ~~italic bold strikethrough ||italic bold strikethrough spoiler||~~ __underline italic bold___ bold*
 __underline italic bold__
 [link](https://www.google.com)
-
 - [ ] Uncompleted task list item
-- [ ] __Underline__ ~~Strikethrough~~ _italic_ Item
 - [x] Completed task list item
-- [x] **Bold** ||Spoiler|| `Inline Code` Item
-
 > Quote
 
 > Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it.
+
+> If you quote is too long, it will be automatically set in expandable citation. 
+> This is the second line of the quote.
+> This is the third line of the quote.
+> This is the fourth line of the quote.
+> This is the fifth line of the quote.
+
 ```python
 print("Hello, World!")
 ```
@@ -47,8 +57,13 @@ This is `inline code`
     - Another item.
 1. Actual numbers don't matter, just that it's a number
 """
-converted = telegramify_markdown.convert(md)
+converted = telegramify_markdown.markdownify(
+    md,
+    max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
+    normalize_whitespace=False
+)
 print(converted)
+# export Markdown to Telegram MarkdownV2 style.
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
 chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
