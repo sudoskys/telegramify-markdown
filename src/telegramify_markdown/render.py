@@ -1,6 +1,6 @@
 import html
 import re
-from itertools import chain
+from itertools import chain, tee
 from typing import Iterable
 
 from mistletoe import block_token, span_token
@@ -9,7 +9,7 @@ from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinitio
 from mistletoe.span_token import SpanToken
 from telebot import formatting
 
-from .customize import markdown_symbol, strict_markdown
+from .customize import markdown_symbol, strict_markdown, cite_expandable
 
 
 class Spoiler(SpanToken):
@@ -90,12 +90,35 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def render_quote(
             self, token: block_token.Quote, max_line_length: int
     ) -> Iterable[str]:
+        def add_expanded_suffix(iterable: Iterable[str]) -> Iterable[str]:
+            iterator = iter(iterable)
+            try:
+                previous_item = next(iterator)
+            except StopIteration:
+                return iter([])
+            for current_item in iterator:
+                yield previous_item
+                previous_item = current_item
+            yield f"{previous_item}||"
+
         max_child_line_length = max_line_length - 2 if max_line_length else None
         lines = self.blocks_to_lines(
             token.children, max_line_length=max_child_line_length
         )
+        lines, counter = tee(lines)
+        total_characters = sum(len(s) for s in counter)
         # NOTE: Remove the space after the > , but it is not standard markdown
-        return self.prefix_lines(lines or [""], ">")
+        append_expanded_cite = cite_expandable and total_characters > 200
+        if append_expanded_cite:
+            first_line_prefix = "**>"
+            lines = add_expanded_suffix(lines)
+        else:
+            first_line_prefix = ">"
+        yield from self.prefix_lines(
+            lines or [""],
+            first_line_prefix=first_line_prefix,
+            following_line_prefix=">"
+        )
 
     def render_heading(
             self, token: block_token.Heading, max_line_length: int

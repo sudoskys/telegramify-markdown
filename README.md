@@ -49,6 +49,7 @@ pdm add telegramify-markdown
 - [x] Strikethrough `~~Strikethrough~~`
 - [x] Spoilers `||Spoiler||`
 - [x] Task Lists
+- [x] Expanded Citation
 - [ ] Strikethrough `~Strikethrough~`
 - [ ] Telegram Emojis
 - [ ] Telegram User Mentions
@@ -64,7 +65,8 @@ from telegramify_markdown import customize
 
 customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False or it will be converted to bold.
+customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False, or it will be converted to bold.
+customize.cite_expandable = True  # If you want to enable expandable citation, set it to True.
 markdown_text = """
 # Title
 ## Subtitle
@@ -88,6 +90,13 @@ __underline italic bold__
 > Quote
 
 > Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it.
+
+> If you quote is too long, it will be automatically set in expandable citation. 
+> This is the second line of the quote.
+> This is the third line of the quote.
+> This is the fourth line of the quote.
+> This is the fifth line of the quote.
+
 ```python
 print("Hello, World!")
 ```
@@ -109,4 +118,7 @@ print(converted)
 
 output as follows:
 
-![.github/result.png](.github/result-5.png)
+| Exp 1                           | Exp 2                           |
+|---------------------------------|---------------------------------|
+| ![result](.github/result-5.png) | ![result](.github/result-6.png) |
+

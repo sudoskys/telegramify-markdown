@@ -18,5 +18,6 @@ class Symbol(object):
 
 
 markdown_symbol = Symbol()
+cite_expandable = True
 strict_markdown = True
 unescape_html = False
