@@ -22,6 +22,13 @@ md = """
 \\\\(TEST
 \\\\\(TEST
 
+
+| Tables        | Are           | Cool  |
+| ------------- |:-------------:| -----:|
+|       | right-aligned | $1600 |
+| col 2 is      | centered      |   $12 |
+| zebra stripes | are neat      |    $1 |
+
 '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
 _ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
 We will remove the \ symbol from the original text.
@@ -39,13 +46,18 @@ __underline italic bold__
 - [x] Completed task list item
 > Quote
 
-> Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it.
+>Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it. 
+---
+Text
 
+Text
+
+Text
 > If you quote is too long, it will be automatically set in expandable citation. 
 > This is the second line of the quote.
-> This is the third line of the quote.
+> `This is the third line of the quote.`
 > This is the fourth line of the quote.
-> This is the fifth line of the quote.
+> `This is the fifth line of the quote.`
 
 ```python
 print("Hello, World!")
