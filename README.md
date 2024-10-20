@@ -3,21 +3,21 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)  
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-> 🪄 Python Telegram Markdown Converter | No more formatting headaches.
+**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style)
+Style**
 
-**Convert Raw Markdown to Telegram's MarkdownV2 Style**
+Say goodbye to formatting issues! You no longer need to write parsers to convert raw Markdown text into Telegram's
+MarkdownV2 format.
 
-Introducing a robust Python library that enhances Markdown formatting support in Telegram. This library automatically
-processes various Markdown inputs, preserving the original formatting without requiring manual escaping. It simplifies
-your Markdown interactions on Telegram with seamless auto-processing.
+This library is designed to make reading and sending Markdown content on Telegram easier and more efficient. It is ideal
+for LLM responses, GitHub README files, and more.
 
-Before this library, sending and rendering unknown Markdown content (like GitHub's README files) required complex
-parsing and reconstruction. Now, you can easily handle this and customize it for better results!
+Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to ensure
+its effectiveness.
 
-Utilizing a custom renderer, the library has been tested in a real server environment to ensure its efficacy.
-
-> For those interested, there is also a Node.js version of the library with the same
-> name: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown)
+> [!NOTE]
+> If you're interested, there's also a Node.js version of the library
+> available: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
 ## Installation
 
