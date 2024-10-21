@@ -1,3 +1,4 @@
+import re
 from typing import Union
 
 import mistletoe
@@ -6,7 +7,11 @@ from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
+from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
+from .latex_escape.helper import LatexToUnicodeHelper
 from .render import TelegramMarkdownRenderer, escape_markdown
+
+latex_escape_helper = LatexToUnicodeHelper()
 
 __all__ = [
     "convert",
@@ -14,6 +19,43 @@ __all__ = [
     "customize",
     "markdownify"
 ]
+
+
+def escape_latex(text):
+    # Patterns to match block and inline math
+    math_p = re.compile(r'\\\[(.*?)\\\]', re.DOTALL)
+    inline_math_p = re.compile(r'\\\((.*?)\\\)', re.DOTALL)
+
+    def contains_latex_symbols(content):
+        # Check for common LaTeX symbols
+        if len(content) < 5:
+            return False
+        latex_symbols = (r"\frac",
+                         r"\sqrt",
+                         r"\begin",
+                         ) + tuple(LATEX_SYMBOLS.keys()) + tuple(NOT_MAP.keys()) + tuple(LATEX_STYLES.keys())
+        return any(symbol in content for symbol in latex_symbols)
+
+    def latex2unicode(match, is_block):
+        # Extract the content of the match
+        content = match.group(1)
+        if not contains_latex_symbols(content):
+            return match.group(0)  # Return the original match if no LaTeX symbols are found
+        content = latex_escape_helper.convert(content)
+        if is_block:
+            return f"```{content.strip()}```"
+        else:
+            return f"`{content.strip().strip('\n')}`"
+
+    lines = text.split("\n\n")
+    processed_lines = []
+    for line in lines:
+        # Process block-level math
+        processed_line = math_p.sub(lambda match: latex2unicode(match, is_block=True), line)
+        # Process inline math
+        processed_line = inline_math_p.sub(lambda match: latex2unicode(match, is_block=False), processed_line)
+        processed_lines.append(processed_line)
+    return "\n\n".join(processed_lines)
 
 
 def _update_text(token: Union[SpanToken, BlockToken]):
@@ -51,6 +93,8 @@ def markdownify(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
     ) as renderer:
+        if customize.latex_escape:
+            content = escape_latex(content)
         document = mistletoe.Document(content)
         _update_block(document)
         result = renderer.render(document)
