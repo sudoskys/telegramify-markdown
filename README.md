@@ -47,7 +47,7 @@ from telegramify_markdown import customize
 
 customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False, or it will be converted to bold.
+customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False, or it will be converted to bold as telegram does.
 customize.cite_expandable = True  # If you want to enable expandable citation, set it to True.
 customize.latex_escape = True  # If you want to escape LaTeX symbols, set it to True.
 
