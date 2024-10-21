@@ -10,7 +10,7 @@ run_1 = telegramify_markdown.markdownify(
     "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;"
 )
 print(run_1)
-md = """
+md = r"""
 # Title
 ## Subtitle
 ### Subsubtitle
@@ -22,10 +22,24 @@ md = """
 \\\\(TEST
 \\\\\(TEST
 
+**Latex Math**
+Function Change:
+    \(\Delta y = f(x_2) - f(x_1)\) can represent the change in the value of a function.
+Average Rate of Change:
+    \(\frac{\Delta y}{\Delta x} = \frac{f(x_2) - f(x_1)}{x_2 - x_1}\) is used to denote the average rate of change of a function over the interval \([x_1, x_2]\).
+- Slope:
+   \[
+   F = G\frac{{m_1m_2}}{{r^2}}
+   \]
+- Inline: \(F = G\frac{{m_1m_2}}{{r^4}}\)
+
+There \frac{1}{2} not in the latex block.
+
+**Table**
 
 | Tables        | Are           | Cool  |
 | ------------- |:-------------:| -----:|
-|       | right-aligned | $1600 |
+|               | right-aligned | $1600 |
 | col 2 is      | centered      |   $12 |
 | zebra stripes | are neat      |    $1 |
 
