@@ -90,6 +90,14 @@ def markdownify(
         normalize_whitespace=False,
         latex_escape=None
 ) -> str:
+    """
+    Convert markdown content to Telegram markdown format.
+    :param content: The markdown content to convert.
+    :param max_line_length: The maximum length of a line.
+    :param normalize_whitespace: Whether to normalize whitespace.
+    :param latex_escape: Whether to make LaTeX content readable in Telegram.
+    :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
+    """
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
