@@ -87,13 +87,16 @@ def _update_block(token: BlockToken):
 def markdownify(
         content: str,
         max_line_length: int = None,
-        normalize_whitespace=False
+        normalize_whitespace=False,
+        latex_escape=None
 ) -> str:
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
     ) as renderer:
-        if customize.latex_escape:
+        if latex_escape is None:
+            latex_escape = customize.latex_escape
+        if latex_escape:
             content = escape_latex(content)
         document = mistletoe.Document(content)
         _update_block(document)
