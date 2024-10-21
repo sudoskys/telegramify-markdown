@@ -45,7 +45,8 @@ def escape_latex(text):
         if is_block:
             return f"```{content.strip()}```"
         else:
-            return f"`{content.strip().strip('\n')}`"
+            pre_process = content.strip().strip('\n')
+            return f"`{pre_process}`"
 
     lines = text.split("\n\n")
     processed_lines = []
@@ -87,13 +88,24 @@ def _update_block(token: BlockToken):
 def markdownify(
         content: str,
         max_line_length: int = None,
-        normalize_whitespace=False
+        normalize_whitespace=False,
+        latex_escape=None
 ) -> str:
+    """
+    Convert markdown content to Telegram markdown format.
+    :param content: The markdown content to convert.
+    :param max_line_length: The maximum length of a line.
+    :param normalize_whitespace: Whether to normalize whitespace.
+    :param latex_escape: Whether to make LaTeX content readable in Telegram.
+    :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
+    """
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
     ) as renderer:
-        if customize.latex_escape:
+        if latex_escape is None:
+            latex_escape = customize.latex_escape
+        if latex_escape:
             content = escape_latex(content)
         document = mistletoe.Document(content)
         _update_block(document)
