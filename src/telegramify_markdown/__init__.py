@@ -45,7 +45,8 @@ def escape_latex(text):
         if is_block:
             return f"```{content.strip()}```"
         else:
-            return f"`{content.strip().strip('\n')}`"
+            pre_process = content.strip().strip('\n')
+            return f"`{pre_process}`"
 
     lines = text.split("\n\n")
     processed_lines = []
