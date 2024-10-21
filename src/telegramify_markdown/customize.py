@@ -21,3 +21,4 @@ markdown_symbol = Symbol()
 cite_expandable = True
 strict_markdown = True
 unescape_html = False
+latex_escape = False
