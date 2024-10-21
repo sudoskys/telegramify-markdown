@@ -6,6 +6,7 @@ from telebot import TeleBot
 import telegramify_markdown
 
 telegramify_markdown.customize.strict_markdown = False  # we need send underline text
+telegramify_markdown.customize.latex_escape = True  # we need to escape latex
 run_1 = telegramify_markdown.markdownify(
     "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;"
 )
