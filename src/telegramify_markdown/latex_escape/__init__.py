@@ -1,2 +1,2 @@
 # Thanks to https://github.com/tomtung/latex2unicode/
-# Without them, this project would not be possible.
+# Without their work, this project would not be possible.

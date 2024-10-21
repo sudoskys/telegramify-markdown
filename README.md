@@ -183,3 +183,15 @@ TeleBot("TOKEN").send_message(
     parse_mode="MarkdownV2"
 )
 ```
+
+## Acknowledgement
+
+This library is inspired by [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
+
+latex escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
