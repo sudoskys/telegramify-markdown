@@ -4,19 +4,17 @@ from itertools import chain, tee
 from typing import Iterable
 
 from mistletoe import block_token, span_token
-from mistletoe.block_token import BlockToken
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
-from mistletoe.span_token import SpanToken
 from telebot import formatting
 
 from .customize import markdown_symbol, strict_markdown, cite_expandable
 
 
-class Spoiler(SpanToken):
+class Spoiler(span_token.SpanToken):
     pattern = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
 
 
-class TaskListItem(BlockToken):
+class TaskListItem(block_token.BlockToken):
     """
     Custom block token for task list items in Markdown.
     Matches task list items like '- [ ]' and '- [x]'.
@@ -25,7 +23,7 @@ class TaskListItem(BlockToken):
         checked (bool): whether the task is checked.
         content (str): the description of the task list item.
     """
-    repr_attributes = BlockToken.repr_attributes + ("checked", "content")
+    repr_attributes = block_token.BlockToken.repr_attributes + ("checked", "content")
     pattern = re.compile(r'^( *)(- \[([ xX])\] )(.*)')
 
     def __init__(self, match):
@@ -133,8 +131,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             line += markdown_symbol.head_level_3
         elif token.level == 4:
             line += markdown_symbol.head_level_4
-        fs = super().span_to_lines(token.children, max_line_length=max_line_length)
-        text = next(fs, "")
+        text = next(self.span_to_lines(token.children, max_line_length=max_line_length), "")
         if text:
             line += " " + text
         if token.closing_sequence:

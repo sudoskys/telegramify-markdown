@@ -22,10 +22,19 @@ test_md = """
 **bold text**
 ||spoiler||
 """
-converted = telegramify_markdown.convert(task)
+math = r"""
+\[
+\begin{aligned}
+\text{Let } f(x) &= \frac{1}{x} \\
+\text{Then } f'(x) &= -\frac{1}{x^2} \\
+\text{And } f''(x) &= \frac{2}{x^3}
+\end{aligned}
+\]
+
+$ f(x) = \frac{1}{x} $
+"""
+
+converted = telegramify_markdown.convert(math)
 print(converted)
 
-rule = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
-pattern = re.compile(r"^- \[([ xX])\] (.*)", re.DOTALL | re.MULTILINE)
-print(rule.findall(test_md))
-print(pattern.findall(task))
+
