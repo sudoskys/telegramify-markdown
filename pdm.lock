@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:3cf8d47cec590c7442b7422fed43475271b9e598e41b3d87929f01cbb4419ce4"
+content_hash = "sha256:55c8b76d4a044f00f1ea8950a29219197d8671402664cd7fb27e58a9aea8a1b7"
 
 [[metadata.targets]]
 requires_python = ">=3.8"
@@ -117,6 +117,17 @@ marker = "sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
+
+[[package]]
+name = "docutils"
+version = "0.20.1"
+requires_python = ">=3.7"
+summary = "Docutils -- Python Documentation Utilities"
+groups = ["default"]
+files = [
+    {file = "docutils-0.20.1-py3-none-any.whl", hash = "sha256:96f387a2c5562db4476f09f13bbab2192e764cac08ebbf3a34a95d9b1e4a59d6"},
+    {file = "docutils-0.20.1.tar.gz", hash = "sha256:f08a4e276c3a1583a86dce3e34aba3fe04d02bba2dd51ed16106244e8a923e3b"},
 ]
 
 [[package]]

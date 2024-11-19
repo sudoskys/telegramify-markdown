@@ -34,7 +34,16 @@ math = r"""
 $ f(x) = \frac{1}{x} $
 """
 
-converted = telegramify_markdown.convert(math)
+emoji="""
+[inline URL](http://www.example.com/)
+[inline mention of a user](tg://user?id=123456789)
+![👍](tg://emoji?id=5368324170671202286)
+![👍](tg://emoji?id=53683241706712http-hack)
+[👍](tg://emoji?id=53683241706712http-hack)
+[](tg://emoji?id=5368324170671202286)
+"""
+
+converted = telegramify_markdown.markdownify(emoji)
 print(converted)
 
 

@@ -23,6 +23,13 @@ md = r"""
 \\\\(TEST
 \\\\\(TEST
 
+[inline URL](http://www.example.com/)
+[inline mention of a user](tg://user?id=123456789)
+![👍](tg://emoji?id=5368324170671202286)
+![👍](tg://emoji?id=53683241706712http-hack)
+[👍](tg://emoji?id=53683241706712http-hack)
+[](tg://emoji?id=5368324170671202286)
+
 **Latex Math**
 Function Change:
     \(\Delta y = f(x_2) - f(x_1)\) can represent the change in the value of a function.
@@ -83,6 +90,10 @@ This is `inline code`
     - Unordered sub-list.
     - Another item.
 1. Actual numbers don't matter, just that it's a number
+"""
+
+emoji_md = r"""
+![👍](tg://emoji?id=5368324170671202286)
 """
 converted = telegramify_markdown.markdownify(
     md,

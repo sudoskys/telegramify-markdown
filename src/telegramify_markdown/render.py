@@ -70,6 +70,22 @@ def escape_markdown(content: str, unescape_html: bool = True) -> str:
     return final_content
 
 
+def validate_telegram_emoji(url: str) -> bool:
+    """
+    Validate if the URL is a telegram emoji.
+    tg://emoji?id=5368324170671202286
+    :param url: The URL to validate.
+    :type url: str
+    :return: Whether the URL is a telegram emoji.
+    :rtype: bool
+    """
+    wait_validate = str(url)
+    if not wait_validate.startswith("tg://emoji?id="):
+        return False
+    emoji_id = wait_validate.removeprefix("tg://emoji?id=")
+    return emoji_id.isdigit()
+
+
 class TelegramMarkdownRenderer(MarkdownRenderer):
 
     def __init__(self, *extras, **kwargs):
@@ -236,7 +252,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         )
 
     def render_image(self, token: span_token.Image) -> Iterable[Fragment]:
-        yield Fragment(markdown_symbol.image)
+        # tg://emoji?id=5368324170671202286 is a special case
+        if not validate_telegram_emoji(token.src):
+            yield Fragment(markdown_symbol.image)
         yield from self.render_link_or_image(token, token.src)
 
     def render_link(self, token: span_token.Link) -> Iterable[Fragment]:
@@ -249,8 +267,14 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
             # "[" description "](" dest_part [" " title] ")"
             # "[" description "](" dest_part [" " title] ")"
-            yield Fragment(formatting.mlink(url=target, content=title, escape=True)
-                           )
+            if validate_telegram_emoji(target):
+                yield Fragment(
+                    f'![{title}]({target})'
+                )
+            else:
+                yield Fragment(
+                    formatting.mlink(url=target, content=title, escape=True)
+                )
         elif token.dest_type == "full":
             # "[" description "][" label "]"
             yield from (
