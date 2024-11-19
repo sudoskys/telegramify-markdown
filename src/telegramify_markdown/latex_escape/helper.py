@@ -196,6 +196,9 @@ class LatexToUnicodeHelper:
         elif command in LATEX_STYLES:
             text, index = self.parse_block(latex, index)
             return self.translate_styles(command, text), index
+        elif command == "\\text":
+            text, index = self.parse_block(latex, index)
+            return text, index
         return command, index
 
     @staticmethod
@@ -270,7 +273,10 @@ if __name__ == "__main__":
    \[
    E_d = \frac{{\%\Delta Q_d}}{{\%\Delta P}}
    \]
-
+### 总预期时间：
+\[
+\text{总预期时间} = \text{正常飞行时间} + \text{故障增加的时间} = 20 \text{ 年} + 2 \text{ 年} = 22 \text{ 年}
+\]
 勾股定理：(a^2 + b^2 = c^2)
 一元二次方程求解公式：(x = \frac{{-b \pm \sqrt{{b^2 - 4ac}}}}{2a})
 圆的面积：(A = \pi r^2)

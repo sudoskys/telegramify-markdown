@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "mistletoe==1.4.0",
     "pytelegrambotapi>=4.22.0",
+    "docutils>=0.20.1",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
