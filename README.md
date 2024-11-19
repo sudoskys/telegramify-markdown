@@ -1,10 +1,10 @@
 # telegramify-markdown
 
-[![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)  
+![GitHub Repo stars](https://img.shields.io/github/stars/sudoskys/telegramify-markdown?style=social)
+[![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style)
-Style**
+**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style) Style**
 
 Say goodbye to formatting issues! You no longer need to write parsers to convert raw Markdown text into Telegram's
 MarkdownV2 format.

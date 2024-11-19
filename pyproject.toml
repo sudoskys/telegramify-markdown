@@ -14,6 +14,9 @@ requires-python = ">=3.8"
 readme = "README.md"
 license = { text = "MIT" }
 
+[project.urls]
+repository = "https://github.com/sudoskys/telegram-sticker-utils"
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
