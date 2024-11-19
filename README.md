@@ -152,7 +152,7 @@ print(converted)
 - [x] Task Lists
 - [x] Expanded Citation
 - [ ] Strikethrough `~Strikethrough~`
-- [ ] Telegram Emojis
+- [x] Telegram Emojis
 - [ ] Telegram User Mentions
 
 > [!NOTE]
