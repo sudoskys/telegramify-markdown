@@ -1,6 +1,6 @@
 [project]
 name = "telegramify-markdown"
-version = "0.1.15"
+version = "0.1.16"
 description = "Convert Markdown to a format usable by Telegram."
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
