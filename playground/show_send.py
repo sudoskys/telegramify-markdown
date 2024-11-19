@@ -29,6 +29,7 @@ md = r"""
 ![👍](tg://emoji?id=53683241706712http-hack)
 [👍](tg://emoji?id=53683241706712http-hack)
 [](tg://emoji?id=5368324170671202286)
+![👍](tg://emoji?id=53683241706712022865368324170671202286)
 
 **Latex Math**
 Function Change:
