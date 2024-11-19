@@ -22,6 +22,7 @@ key: value
 [inline URL](http://www.example.com/)
 [inline mention of a user](tg://user?id=123456789)
 ![👍](tg://emoji?id=5368324170671202286)
+![👍](tg://emoji?id=536832417067120228655)
 ![👍](tg://emoji?id=53683241706712http-hack)
 [👍](tg://emoji?id=53683241706712http-hack)
 [](tg://emoji?id=5368324170671202286)

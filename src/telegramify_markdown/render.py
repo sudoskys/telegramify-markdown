@@ -74,6 +74,7 @@ def validate_telegram_emoji(url: str) -> bool:
     """
     Validate if the URL is a telegram emoji.
     tg://emoji?id=5368324170671202286
+    id must be 19 digits.
     :param url: The URL to validate.
     :type url: str
     :return: Whether the URL is a telegram emoji.
@@ -83,7 +84,11 @@ def validate_telegram_emoji(url: str) -> bool:
     if not wait_validate.startswith("tg://emoji?id="):
         return False
     emoji_id = wait_validate.removeprefix("tg://emoji?id=")
-    return emoji_id.isdigit()
+    if not emoji_id.isdigit():
+        return False
+    if not len(emoji_id) == 19:
+        return False
+    return True
 
 
 class TelegramMarkdownRenderer(MarkdownRenderer):
