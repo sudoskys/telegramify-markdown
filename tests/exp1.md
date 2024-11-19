@@ -12,6 +12,44 @@ key: value
 
 ### Heading Level 3
 
+\(TEST^&4#@*!^&\)
+\\(TEST^&4#@*!^&\)
+\\\(TEST^&4#@*!^&\)
+\\\\(TEST^&4#@*!^&\)
+\\\\\(TEST^&4#@*!^&\)
+
+**Link**
+[inline URL](http://www.example.com/)
+[inline mention of a user](tg://user?id=123456789)
+![👍](tg://emoji?id=5368324170671202286)
+![👍](tg://emoji?id=53683241706712http-hack)
+[👍](tg://emoji?id=53683241706712http-hack)
+[](tg://emoji?id=5368324170671202286)
+
+**Latex Math**
+Function Change:
+\(\Delta y = f(x_2) - f(x_1)\) can represent the change in the value of a function.
+Average Rate of Change:
+\(\frac{\Delta y}{\Delta x} = \frac{f(x_2) - f(x_1)}{x_2 - x_1}\) is used to denote the average rate of change of a
+function over the interval \([x_1, x_2]\).
+
+- Slope:
+  \[
+  F = G\frac{{m_1m_2}}{{r^2}}
+  \]
+- Inline: \(F = G\frac{{m_1m_2}}{{r^4}}\)
+
+Invalid Latex Math:
+There \frac{1}{2} not in the latex block.
+
+Example of a quote:
+> If you quote is too long, it will be automatically set in expandable citation.
+> This is the second line of the quote.
+> `This is the third line of the quote.`
+> This is the fourth line of the quote.
+> `This is the fifth line of the quote.`
+
+
 Header
 ======
 
@@ -70,8 +108,10 @@ Horizontal Rule
 - [x] Completed task list item
 
 In all other places
-characters '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' must be escaped with the preceding character '\'.
-In all other places characters '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
+characters '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' must be escaped with
+the preceding character '\'.
+In all other places
+characters '\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
 must be escaped with the preceding character '\'.
 
 *bold \*text*
