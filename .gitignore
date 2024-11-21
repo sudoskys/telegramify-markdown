@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 /.pdm-python
 .idea/
+/src/telegramify_markdown/latex_escape/_deprecated_symbols.py

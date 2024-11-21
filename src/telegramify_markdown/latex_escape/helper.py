@@ -199,6 +199,12 @@ class LatexToUnicodeHelper:
         elif command == "\\text":
             text, index = self.parse_block(latex, index)
             return text, index
+        elif command == "\\right":
+            text, index = self.parse_block(latex, index)
+            return text, index
+        elif command == "\\left":
+            text, index = self.parse_block(latex, index)
+            return text, index
         return command, index
 
     @staticmethod
@@ -281,4 +287,8 @@ if __name__ == "__main__":
 一元二次方程求解公式：(x = \frac{{-b \pm \sqrt{{b^2 - 4ac}}}}{2a})
 圆的面积：(A = \pi r^2)
 自然对数的底 (e) 的著名等式：(e^{i\pi} + 1 = 0)
+
+A = X × \left( (P)/100 \right) × (V)/365
+
+\text{R} = \frac{\text{EXAMPLE}}{\text{Any}}
         """)))
