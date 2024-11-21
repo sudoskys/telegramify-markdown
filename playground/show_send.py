@@ -42,6 +42,14 @@ Average Rate of Change:
    \]
 - Inline: \(F = G\frac{{m_1m_2}}{{r^4}}\)
 
+\(
+A = X × \left( (P)/100 \right) × (V)/365
+\)
+
+\(
+\text{R} = \frac{\text{EXAMPLE}}{\text{Any}}
+\)
+
 There \frac{1}{2} not in the latex block.
 
 **Table**
