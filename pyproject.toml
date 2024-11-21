@@ -15,7 +15,7 @@ readme = "README.md"
 license = { text = "MIT" }
 
 [project.urls]
-repository = "https://github.com/sudoskys/telegram-sticker-utils"
+repository = "https://github.com/sudoskys/telegramify-markdown"
 
 [build-system]
 requires = ["pdm-backend"]
