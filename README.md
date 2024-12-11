@@ -141,7 +141,7 @@ print(converted)
 
 please check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
 
-## Supported Input
+## 🔨 Supported Input
 
 - [x] Headings (Levels 1-6)
 - [x] `Links [text](url)`
@@ -165,7 +165,7 @@ please check: **[playground/telegramify_case.py](https://github.com/sudoskys/tel
 > [!NOTE]
 > Despite `~Strikethrough~` being mentioned in Telegram's official documentation, it can't be parsed as strikethrough.
 
-## Proper Usage
+## 🔭 Proper Usage
 
 ```python
 import textwrap
@@ -193,13 +193,13 @@ TeleBot("TOKEN").send_message(
 )
 ```
 
-## Acknowledgement
+## 🧸 Acknowledgement
 
 This library is inspired by [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
 latex escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
 
-## License
+## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
