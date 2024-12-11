@@ -142,7 +142,7 @@ def telegramify(
     """
     Convert markdown content to Telegram Markdown format.
 
-    **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/gpt_super_long.py
+    **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py
 
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
@@ -237,7 +237,7 @@ def markdownify(
     """
     Convert markdown str to Telegram Markdown format.
 
-     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/show_send.py
+     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py
 
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
