@@ -1,7 +1,6 @@
 import dataclasses
 import re
 from abc import ABCMeta
-from copy import deepcopy
 from enum import StrEnum
 from typing import Union, List
 
@@ -13,6 +12,7 @@ from mistletoe.span_token import SpanToken  # noqa
 from . import customize
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
+from .mime import get_filename
 from .render import TelegramMarkdownRenderer, escape_markdown
 
 __all__ = [
@@ -158,33 +158,63 @@ def telegramify(
         if latex_escape:
             content = escape_latex(content)
         document = mistletoe.Document(content)
+        document2 = mistletoe.Document(content)
+        # 只更新第一个文档，因为我们要倒查第二个文档的内容
         _update_block(document)
         # 解离 Token
-        tokens = document.children
+        tokens = list(document.children)
+        tokens2 = list(document2.children)
+        if len(tokens) != len(tokens2):
+            raise ValueError("Token length mismatch")
 
         # 对内容进行分块渲染
-        def is_over_max_word_count(doc_t: List[BlockToken]):
+        def is_over_max_word_count(doc_t: list):
             doc = mistletoe.Document(lines=[])
-            doc.children = doc_t
+            doc.children = [___token for ___token, ___token2 in doc_t]
             return len(renderer.render(doc)) > max_word_count
 
-        def render_block(doc_t: List[BlockToken]):
+        def render_block(doc_t: list):
             doc = mistletoe.Document(lines=[])
-            doc.children = doc_t
+            doc.children = doc_t.copy()
             return renderer.render(doc)
 
         _stack = []
         _packed = []
         # 步进推送
-        for token in tokens:
+        for _token, _token2 in zip(tokens, tokens2):
             # 计算如果推送当前 Token 是否会超过最大字数限制
-            if is_over_max_word_count(_stack + [token]):
+            if is_over_max_word_count(_stack + [(_token, _token2)]):
                 _packed.append(_stack)
-                _stack = [token]
+                _stack = [(_token, _token2)]
             else:
-                _stack.append(token)
+                _stack.append((_token, _token2))
+        # 推送剩余的 Token
+        if _stack:
+            _packed.append(_stack)
         for pack in _packed:
-            _rendered.append(Text(render_block(pack)))
+            # 混拆解包
+            __token1_l = list(__token1 for __token1, __token2 in pack)
+            __token2_l = list(__token2 for __token1, __token2 in pack)
+            print(__token1_l)
+            print(__token2_l)
+            escaped_cell = render_block(__token1_l)
+            unescaped_cell = render_block(__token2_l)
+            # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
+            if len(escaped_cell) > max_word_count:
+                if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
+                        __token1_l) == 1:
+                    code = __token1_l[0]
+                    lang = "txt"
+                    if isinstance(code, mistletoe.block_token.CodeFence):
+                        lang = code.language
+                    file_name = get_filename(line=escaped_cell, language=lang)
+                    _rendered.append(
+                        File(file_name=file_name, file_data=unescaped_cell.encode(), caption="")
+                    )
+                else:
+                    _rendered.append(Text(content=escaped_cell))
+            else:
+                _rendered.append(Text(content=escaped_cell))
     return _rendered
 
 

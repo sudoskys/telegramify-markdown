@@ -197,8 +197,8 @@ print(f"最大价值（动态规划 + 空间优化）: {max_value}")
 以下代码使用 React 构建了一个 UI 应用，允许用户动态输入数据并计算最大背包价值：
 
 ```jsx
+// KnapsackProblem.jsx
 import React, {useState} from "react";
-
 const KnapsackProblem = () => {
   const [capacity, setCapacity] = useState("");
   const [weights, setWeights] = useState("");
@@ -381,3 +381,5 @@ const KnapsackProblem = () => {
 
 export default KnapsackProblem;
 ```
+
+test.md
