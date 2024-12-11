@@ -23,7 +23,7 @@ for LLM responses, GitHub README files, and more.
 > If you're interested, there's also a Node.js version of the library
 > available: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
-## Quick Start
+## 🪄 Quick Start
 
 To install the library, run:
 
@@ -37,7 +37,7 @@ or, if you use `pdm`:
 pdm add telegramify-markdown
 ```
 
-### What you want to do?
+### 🤔 What you want to do?
 
 - If you just want to send *static text* and don't want to worry about formatting,
   check: **[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)**
@@ -45,13 +45,13 @@ pdm add telegramify-markdown
 - If you are developing an *LLM application* and need to send potentially **super-long text**, please
   check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
 
-## Use case
+## 👀 Use case
 
 | markdownify_case 1              | markdownify_case 2              | telegramify_case                |
 |---------------------------------|---------------------------------|---------------------------------|
 | ![result](.github/result-7.png) | ![result](.github/result-8.png) | ![result](.github/result-9.png) |
 
-### markdownify
+### `markdownify`
 
 ````python3
 import telegramify_markdown
@@ -137,10 +137,9 @@ print(converted)
 # export Markdown to Telegram MarkdownV2 style.
 ````
 
-### telegramify_case
+### `telegramify_case`
 
-please
-check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+please check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
 
 ## Supported Input
 
