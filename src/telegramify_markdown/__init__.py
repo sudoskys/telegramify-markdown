@@ -1,5 +1,9 @@
+import dataclasses
 import re
-from typing import Union
+from abc import ABCMeta
+from copy import deepcopy
+from enum import StrEnum
+from typing import Union, List
 
 import mistletoe
 from mistletoe.block_token import BlockToken, ThematicBreak  # noqa
@@ -11,14 +15,15 @@ from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
 from .render import TelegramMarkdownRenderer, escape_markdown
 
-latex_escape_helper = LatexToUnicodeHelper()
-
 __all__ = [
-    "convert",
     "escape_markdown",
     "customize",
-    "markdownify"
+    "markdownify",
+    "telegramify",
+    "ContentTypes",
 ]
+
+latex_escape_helper = LatexToUnicodeHelper()
 
 
 def escape_latex(text):
@@ -60,8 +65,10 @@ def escape_latex(text):
 
 
 def _update_text(token: Union[SpanToken, BlockToken]):
-    """Update the text contents of a span token and its children.
-    `InlineCode` tokens are left unchanged."""
+    """
+    Update the text contents of a span token and its children.
+    `InlineCode` tokens are left unchanged.
+    """
     if isinstance(token, ThematicBreak):
         token.line = escape_markdown("————————")
         pass
@@ -75,8 +82,10 @@ def _update_text(token: Union[SpanToken, BlockToken]):
 
 
 def _update_block(token: BlockToken):
-    """Update the text contents of paragraphs and headings within this block,
-    and recursively within its children."""
+    """
+    Update the text contents of paragraphs and headings within this block,
+    and recursively within its children.
+    """
     if hasattr(token, "children") and token.children:
         # Dispatch all children
         for child in token.children:
@@ -85,20 +94,115 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
+class ContentTypes(StrEnum):
+    TEXT = "text"
+    FILE = "file"
+    PHOTO = "photo"
+
+
+class RenderedContent(object, metaclass=ABCMeta):
+    """
+    The rendered content.
+
+    - content: str
+    - content_type: ContentTypes
+    """
+    content_type: ContentTypes
+
+
+@dataclasses.dataclass
+class Text(RenderedContent):
+    content: str
+    content_type: ContentTypes = ContentTypes.TEXT
+
+
+@dataclasses.dataclass
+class File(RenderedContent):
+    file_name: str
+    file_data: bytes
+    caption: str
+    content_type: ContentTypes = ContentTypes.FILE
+
+
+@dataclasses.dataclass
+class Photo(RenderedContent):
+    file_name: str
+    file_data: bytes
+    caption: bytes
+    content_type: ContentTypes = ContentTypes.PHOTO
+
+
+def telegramify(
+        content: str,
+        max_line_length: int = None,
+        normalize_whitespace=False,
+        latex_escape=None,
+        max_word_count: int = 4090
+) -> List[Union[Text, File, Photo]]:
+    """
+    Convert markdown content to Telegram Markdown format.
+    :param content: The markdown content to convert.
+    :param max_line_length: The maximum length of a line.
+    :param normalize_whitespace: Whether to normalize whitespace.
+    :param latex_escape: Whether to make LaTeX content readable in Telegram.
+    :param max_word_count: The maximum number of words in a single message.
+    :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
+    """
+    _rendered: List[Union[Text, File, Photo]] = []
+    with TelegramMarkdownRenderer(
+            max_line_length=max_line_length,
+            normalize_whitespace=normalize_whitespace
+    ) as renderer:
+        if latex_escape is None:
+            latex_escape = customize.latex_escape
+        if latex_escape:
+            content = escape_latex(content)
+        document = mistletoe.Document(content)
+        _update_block(document)
+        # 解离 Token
+        tokens = document.children
+
+        # 对内容进行分块渲染
+        def is_over_max_word_count(doc_t: List[BlockToken]):
+            doc = mistletoe.Document(lines=[])
+            doc.children = doc_t
+            return len(renderer.render(doc)) > max_word_count
+
+        def render_block(doc_t: List[BlockToken]):
+            doc = mistletoe.Document(lines=[])
+            doc.children = doc_t
+            return renderer.render(doc)
+
+        _stack = []
+        _packed = []
+        # 步进推送
+        for token in tokens:
+            # 计算如果推送当前 Token 是否会超过最大字数限制
+            if is_over_max_word_count(_stack + [token]):
+                _packed.append(_stack)
+                _stack = [token]
+            else:
+                _stack.append(token)
+        for pack in _packed:
+            _rendered.append(Text(render_block(pack)))
+    return _rendered
+
+
 def markdownify(
         content: str,
         max_line_length: int = None,
         normalize_whitespace=False,
-        latex_escape=None
+        latex_escape=None,
 ) -> str:
     """
-    Convert markdown content to Telegram markdown format.
+    Convert markdown str to Telegram Markdown format.
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
     :param normalize_whitespace: Whether to normalize whitespace.
     :param latex_escape: Whether to make LaTeX content readable in Telegram.
     :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
     """
+    _rendered = []
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
@@ -111,9 +215,3 @@ def markdownify(
         _update_block(document)
         result = renderer.render(document)
     return result
-
-
-def convert(content: str) -> str:
-    # '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
-    # simple warp for the markdownify function
-    return markdownify(content)

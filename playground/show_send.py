@@ -99,6 +99,9 @@ This is `inline code`
     - Unordered sub-list.
     - Another item.
 1. Actual numbers don't matter, just that it's a number
+```
+print("```")
+```
 """
 
 emoji_md = r"""
