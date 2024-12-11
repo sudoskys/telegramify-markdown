@@ -2,6 +2,27 @@
 key: value
 ---
 
+# TEST1
+
+\(TEST
+\\(TEST
+\\\(TEST
+\\\\(TEST
+\\\\\(TEST
+'\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
+_ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
+
+## TEST2
+
+**Latex Math**
+Function Change:
+\(\Delta y = f(x_2) - f(x_1)\) can represent the change in the value of a function.
+Average Rate of Change:
+\(\frac{\Delta y}{\Delta x} = \frac{f(x_2) - f(x_1)}{x_2 - x_1}\) is used to denote the average rate of change of a
+function over the interval \([x_1, x_2]\).
+
+## TEST3
+
 \(c!ode\)
 
 \# Heading Level 1 `c!ode`

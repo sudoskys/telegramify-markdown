@@ -1,7 +1,7 @@
 import dataclasses
 import re
 from abc import ABCMeta
-from enum import StrEnum
+from enum import Enum
 from typing import Union, List
 
 import mistletoe
@@ -94,7 +94,7 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-class ContentTypes(StrEnum):
+class ContentTypes(Enum):
     TEXT = "text"
     FILE = "file"
     PHOTO = "photo"
@@ -120,7 +120,7 @@ class Text(RenderedContent):
 class File(RenderedContent):
     file_name: str
     file_data: bytes
-    caption: str
+    caption: str = ""
     content_type: ContentTypes = ContentTypes.FILE
 
 
@@ -128,7 +128,7 @@ class File(RenderedContent):
 class Photo(RenderedContent):
     file_name: str
     file_data: bytes
-    caption: bytes
+    caption: str = ""
     content_type: ContentTypes = ContentTypes.PHOTO
 
 
@@ -141,12 +141,17 @@ def telegramify(
 ) -> List[Union[Text, File, Photo]]:
     """
     Convert markdown content to Telegram Markdown format.
+
+    **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/gpt_super_long.py
+
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
     :param normalize_whitespace: Whether to normalize whitespace.
     :param latex_escape: Whether to make LaTeX content readable in Telegram.
     :param max_word_count: The maximum number of words in a single message.
     :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
+    :raises ValueError: If the token length mismatch.
+    :raises Exception: Some other exceptions.
     """
     _rendered: List[Union[Text, File, Photo]] = []
     with TelegramMarkdownRenderer(
@@ -195,24 +200,23 @@ def telegramify(
             # 混拆解包
             __token1_l = list(__token1 for __token1, __token2 in pack)
             __token2_l = list(__token2 for __token1, __token2 in pack)
-            print(__token1_l)
-            print(__token2_l)
             escaped_cell = render_block(__token1_l)
             unescaped_cell = render_block(__token2_l)
             # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
             if len(escaped_cell) > max_word_count:
-                if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
-                        __token1_l) == 1:
-                    code = __token1_l[0]
-                    raw = list(__token2_l[0].children)
+                if all(
+                        isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l
+                ) and len(__token1_l) == 1 and len(__token2_l) == 1:
+                    _escaped_code = __token1_l[0]
+                    _unescaped_code_child = list(__token2_l[0].children)
                     file_content = unescaped_cell
-                    if raw:
-                        _raw = raw[0]
-                        if isinstance(_raw, mistletoe.span_token.RawText):
-                            file_content = _raw.content
+                    if _unescaped_code_child:
+                        _code_text = _unescaped_code_child[0]
+                        if isinstance(_code_text, mistletoe.span_token.RawText):
+                            file_content = _code_text.content
                     lang = "txt"
-                    if isinstance(code, mistletoe.block_token.CodeFence):
-                        lang = code.language
+                    if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
+                        lang = _escaped_code.language
                     file_name = get_filename(line=escaped_cell, language=lang)
                     _rendered.append(
                         File(file_name=file_name, file_data=file_content.encode(), caption="")
@@ -232,6 +236,9 @@ def markdownify(
 ) -> str:
     """
     Convert markdown str to Telegram Markdown format.
+
+     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/show_send.py
+
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
     :param normalize_whitespace: Whether to normalize whitespace.
