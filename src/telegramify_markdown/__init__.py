@@ -204,12 +204,18 @@ def telegramify(
                 if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
                         __token1_l) == 1:
                     code = __token1_l[0]
+                    raw = list(__token2_l[0].children)
+                    file_content = unescaped_cell
+                    if raw:
+                        _raw = raw[0]
+                        if isinstance(_raw, mistletoe.span_token.RawText):
+                            file_content = _raw.content
                     lang = "txt"
                     if isinstance(code, mistletoe.block_token.CodeFence):
                         lang = code.language
                     file_name = get_filename(line=escaped_cell, language=lang)
                     _rendered.append(
-                        File(file_name=file_name, file_data=unescaped_cell.encode(), caption="")
+                        File(file_name=file_name, file_data=file_content.encode(), caption="")
                     )
                 else:
                     _rendered.append(Text(content=escaped_cell))
