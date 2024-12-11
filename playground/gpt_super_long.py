@@ -9,6 +9,14 @@ import telegramify_markdown
 from telegramify_markdown import ContentTypes
 from telegramify_markdown.customize import markdown_symbol
 
+tips = """
+telegramify_markdown.telegramify 
+
+The stability of telegramify_markdown.telegramify is unproven, please keep good log records.
+
+Feel free to check it out, if you have any questions please open an issue
+"""
+
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
 chat_id = os.getenv("TELEGRAM_CHAT_ID", None)

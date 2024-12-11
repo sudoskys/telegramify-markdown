@@ -4,7 +4,8 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style) Style**
+**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style)
+Style**
 
 Say goodbye to formatting issues! You no longer need to write parsers to convert raw Markdown text into Telegram's
 MarkdownV2 format.
@@ -12,16 +13,17 @@ MarkdownV2 format.
 This library is designed to make reading and sending Markdown content on Telegram easier and more efficient. It is ideal
 for LLM responses, GitHub README files, and more.
 
-Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to ensure
-its effectiveness.
-
-We also support Latex Visualization(escape) and Expanded Citation.
+- No matter the format or length, it can be easily handled!
+- Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to
+  ensure
+  its effectiveness.
+- We also support Latex Visualization(escape) and Expanded Citation.
 
 > [!NOTE]
 > If you're interested, there's also a Node.js version of the library
 > available: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
-## Installation
+## Quick Start
 
 To install the library, run:
 
@@ -34,6 +36,12 @@ or, if you use `pdm`:
 ```shell
 pdm add telegramify-markdown
 ```
+
+If you just want to send static text and don't want to worry about formatting,
+check: [playground/show_send.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/show_send.py)
+
+If you are developing an LLM application and need to send potentially long text, please
+check: [playground/gpt_super_long.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/gpt_super_long.py)
 
 ## Use case
 
@@ -115,15 +123,6 @@ Text
 > This is the fourth line of the quote.
 > `This is the fifth line of the quote.`
 
-```python
-print("Hello, World!")
-```
-This is `inline code`
-1. First ordered list item
-2. Another item
-    - Unordered sub-list.
-    - Another item.
-1. Actual numbers don't matter, just that it's a number
 """
 converted = telegramify_markdown.markdownify(
     markdown_text,
@@ -151,9 +150,9 @@ print(converted)
 - [x] Spoilers `||Spoiler||`
 - [x] Task Lists
 - [x] Expanded Citation
-- [ ] Strikethrough `~Strikethrough~`
 - [x] Telegram Emojis
 - [ ] Telegram User Mentions
+- [ ] Strikethrough `~Strikethrough~`
 
 > [!NOTE]
 > Despite `~Strikethrough~` being mentioned in Telegram's official documentation, it can't be parsed as strikethrough.
