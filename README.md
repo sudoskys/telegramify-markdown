@@ -4,7 +4,8 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style) Style**
+**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style)
+Style**
 
 Say goodbye to formatting issues! You no longer need to write parsers to convert raw Markdown text into Telegram's
 MarkdownV2 format.
@@ -12,16 +13,17 @@ MarkdownV2 format.
 This library is designed to make reading and sending Markdown content on Telegram easier and more efficient. It is ideal
 for LLM responses, GitHub README files, and more.
 
-Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to ensure
-its effectiveness.
-
-We also support Latex Visualization(escape) and Expanded Citation.
+- No matter the format or length, it can be easily handled!
+- Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to
+  ensure
+  its effectiveness.
+- We also support Latex Visualization(escape) and Expanded Citation.
 
 > [!NOTE]
 > If you're interested, there's also a Node.js version of the library
 > available: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
-## Installation
+## 🪄 Quick Start
 
 To install the library, run:
 
@@ -35,11 +37,21 @@ or, if you use `pdm`:
 pdm add telegramify-markdown
 ```
 
-## Use case
+### 🤔 What you want to do?
 
-| Exp 1                           | Exp 2                           |
-|---------------------------------|---------------------------------|
-| ![result](.github/result-7.png) | ![result](.github/result-8.png) |
+- If you just want to send *static text* and don't want to worry about formatting,
+  check: **[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)**
+
+- If you are developing an *LLM application* and need to send potentially **super-long text**, please
+  check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
+
+## 👀 Use case
+
+| markdownify_case 1              | markdownify_case 2              | telegramify_case                |
+|---------------------------------|---------------------------------|---------------------------------|
+| ![result](.github/result-7.png) | ![result](.github/result-8.png) | ![result](.github/result-9.png) |
+
+### `markdownify`
 
 ````python3
 import telegramify_markdown
@@ -115,15 +127,6 @@ Text
 > This is the fourth line of the quote.
 > `This is the fifth line of the quote.`
 
-```python
-print("Hello, World!")
-```
-This is `inline code`
-1. First ordered list item
-2. Another item
-    - Unordered sub-list.
-    - Another item.
-1. Actual numbers don't matter, just that it's a number
 """
 converted = telegramify_markdown.markdownify(
     markdown_text,
@@ -134,7 +137,11 @@ print(converted)
 # export Markdown to Telegram MarkdownV2 style.
 ````
 
-## Supported Input
+### `telegramify_case`
+
+please check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
+
+## 🔨 Supported Input
 
 - [x] Headings (Levels 1-6)
 - [x] `Links [text](url)`
@@ -151,14 +158,14 @@ print(converted)
 - [x] Spoilers `||Spoiler||`
 - [x] Task Lists
 - [x] Expanded Citation
-- [ ] Strikethrough `~Strikethrough~`
 - [x] Telegram Emojis
 - [ ] Telegram User Mentions
+- [ ] Strikethrough `~Strikethrough~`
 
 > [!NOTE]
 > Despite `~Strikethrough~` being mentioned in Telegram's official documentation, it can't be parsed as strikethrough.
 
-## Proper Usage
+## 🔭 Proper Usage
 
 ```python
 import textwrap
@@ -186,13 +193,13 @@ TeleBot("TOKEN").send_message(
 )
 ```
 
-## Acknowledgement
+## 🧸 Acknowledgement
 
 This library is inspired by [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
 latex escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
 
-## License
+## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 

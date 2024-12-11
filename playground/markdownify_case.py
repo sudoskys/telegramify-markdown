@@ -1,17 +1,23 @@
 import os
+import textwrap
 
 from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
 
+# Customize the markdownify
 telegramify_markdown.customize.strict_markdown = False  # we need send underline text
 telegramify_markdown.customize.latex_escape = True  # we need to escape latex
-run_1 = telegramify_markdown.markdownify(
+
+# Test html tags
+html_t = telegramify_markdown.markdownify(
     "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;"
 )
-print(run_1)
-md = r"""
+print(html_t)
+
+# Use textwrap.dedent to remove the leading whitespace from the text.
+md = textwrap.dedent(r"""
 # Title
 ## Subtitle
 ### Subsubtitle
@@ -99,11 +105,16 @@ This is `inline code`
     - Unordered sub-list.
     - Another item.
 1. Actual numbers don't matter, just that it's a number
-"""
+```
+print("```")
+```
+""")
 
 emoji_md = r"""
 ![👍](tg://emoji?id=5368324170671202286)
 """
+
+# export Markdown to Telegram MarkdownV2 style.
 converted = telegramify_markdown.markdownify(
     md,
     max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
@@ -118,5 +129,5 @@ bot = TeleBot(telegram_bot_token)
 bot.send_message(
     chat_id,
     converted,
-    parse_mode="MarkdownV2"
+    parse_mode="MarkdownV2"  # IMPORTANT: Need Send in MarkdownV2 Mode.
 )
