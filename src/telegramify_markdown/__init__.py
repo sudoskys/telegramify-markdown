@@ -222,7 +222,7 @@ def telegramify(
                         File(file_name=file_name, file_data=file_content.encode(), caption="")
                     )
                 else:
-                    _rendered.append(Text(content=escaped_cell))
+                    _rendered.append(File(file_name="letter.txt", file_data=unescaped_cell.encode(), caption=""))
             else:
                 _rendered.append(Text(content=escaped_cell))
     return _rendered
