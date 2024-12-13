@@ -8,7 +8,6 @@ from typing import Union, Tuple
 
 import requests
 from PIL import Image
-from typing_extensions import Buffer
 
 from telegramify_markdown.logger import logger
 
@@ -56,7 +55,7 @@ def is_image(data: BytesIO) -> bool:
         return False
 
 
-def compress_to_deflate(data: Union[Buffer, bytes]) -> bytes:
+def compress_to_deflate(data: Union[bytes]) -> bytes:
     """
     Compress the data using the DEFLATE algorithm.
     :param data: The data to compress
