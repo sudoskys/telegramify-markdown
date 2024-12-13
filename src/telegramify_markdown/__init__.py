@@ -1,8 +1,5 @@
-import dataclasses
 import re
-from abc import ABCMeta
-from enum import Enum
-from typing import Union, List
+from typing import Union, List, Tuple, Any
 
 import mistletoe
 from mistletoe.block_token import BlockToken, ThematicBreak  # noqa
@@ -10,19 +7,24 @@ from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
+from .interpreters import Text, File, Photo, BaseInterpreter, MermaidInterpreter, Interpreters
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
+from .logger import logger
+from .mermaid import render_mermaid
 from .mime import get_filename
 from .render import TelegramMarkdownRenderer, escape_markdown
+from .type import Text, File, Photo, ContentTypes
 
 __all__ = [
     "escape_markdown",
     "customize",
     "markdownify",
     "telegramify",
+    "BaseInterpreter",
+    "Interpreters",
     "ContentTypes",
 ]
-
 latex_escape_helper = LatexToUnicodeHelper()
 
 
@@ -94,42 +96,55 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-class ContentTypes(Enum):
-    TEXT = "text"
-    FILE = "file"
-    PHOTO = "photo"
+class PackHelper(object):
+    @staticmethod
+    def process_long_pack(__token1_l: list, __token2_l: list, render_func: callable):
+        """
+        Process the long pack.
+        :param __token1_l: Escaped tokens
+        :param __token2_l: Unescaped tokens
+        :param render_func: The render function
+        :return:
+        """
+        # 如果超过最大字数限制
+        if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
+                __token1_l) == 1 and len(__token2_l) == 1:
+            # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
+            _escaped_code = __token1_l[0]
+            _unescaped_code_child = list(__token2_l[0].children)
+            file_content = render_func(__token2_l)
+            if _unescaped_code_child:
+                _code_text = _unescaped_code_child[0]
+                if isinstance(_code_text, mistletoe.span_token.RawText):
+                    file_content = _code_text.content
+            lang = "txt"
+            if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
+                lang = _escaped_code.language
+            if lang.lower() == "mermaid":
+                try:
+                    image_io, caption = render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
+                    return [Photo(file_name="mermaid.png", file_data=image_io.getvalue(), caption=caption)]
+                except Exception as e:
+                    pass
+            file_name = get_filename(line=render_func(__token1_l), language=lang)
+            return [File(file_name=file_name, file_data=file_content.encode(), caption="")]
+        # 如果超过最大字数限制
+        return [File(file_name="letter.txt", file_data=render_func(__token2_l).encode(), caption="")]
 
-
-class RenderedContent(object, metaclass=ABCMeta):
-    """
-    The rendered content.
-
-    - content: str
-    - content_type: ContentTypes
-    """
-    content_type: ContentTypes
-
-
-@dataclasses.dataclass
-class Text(RenderedContent):
-    content: str
-    content_type: ContentTypes = ContentTypes.TEXT
-
-
-@dataclasses.dataclass
-class File(RenderedContent):
-    file_name: str
-    file_data: bytes
-    caption: str = ""
-    content_type: ContentTypes = ContentTypes.FILE
-
-
-@dataclasses.dataclass
-class Photo(RenderedContent):
-    file_name: str
-    file_data: bytes
-    caption: str = ""
-    content_type: ContentTypes = ContentTypes.PHOTO
+    @staticmethod
+    def process_short_pack(__token1_l, __token2_l, render_func):
+        """
+        Process the short pack.
+        :param __token1_l: Escaped tokens
+        :param __token2_l: Unescaped tokens
+        :param render_func: The render function
+        :return:
+        """
+        _processed = []
+        escaped_cell = render_func(__token1_l)
+        # 没有超过最大字数限制
+        _processed.append(Text(content=escaped_cell))
+        return _processed
 
 
 def telegramify(
@@ -173,18 +188,23 @@ def telegramify(
             raise ValueError("Token length mismatch")
 
         # 对内容进行分块渲染
-        def is_over_max_word_count(doc_t: list):
+        def is_over_max_word_count(doc_t: List[Tuple[Any, Any]]):
             doc = mistletoe.Document(lines=[])
             doc.children = [___token for ___token, ___token2 in doc_t]
             return len(renderer.render(doc)) > max_word_count
 
-        def render_block(doc_t: list):
+        def render_block(doc_t: List[Any]):
             doc = mistletoe.Document(lines=[])
             doc.children = doc_t.copy()
             return renderer.render(doc)
 
+        def render_lines(lines: str):
+            doc = mistletoe.Document(lines=lines)
+            return renderer.render(doc)
+
         _stack = []
         _packed = []
+
         # 步进推送
         for _token, _token2 in zip(tokens, tokens2):
             # 计算如果推送当前 Token 是否会超过最大字数限制
@@ -193,38 +213,31 @@ def telegramify(
                 _stack = [(_token, _token2)]
             else:
                 _stack.append((_token, _token2))
-        # 推送剩余的 Token
         if _stack:
             _packed.append(_stack)
-        for pack in _packed:
-            # 混拆解包
-            __token1_l = list(__token1 for __token1, __token2 in pack)
-            __token2_l = list(__token2 for __token1, __token2 in pack)
-            escaped_cell = render_block(__token1_l)
-            unescaped_cell = render_block(__token2_l)
-            # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
-            if len(escaped_cell) > max_word_count:
-                if all(
-                        isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l
-                ) and len(__token1_l) == 1 and len(__token2_l) == 1:
-                    _escaped_code = __token1_l[0]
-                    _unescaped_code_child = list(__token2_l[0].children)
-                    file_content = unescaped_cell
-                    if _unescaped_code_child:
-                        _code_text = _unescaped_code_child[0]
-                        if isinstance(_code_text, mistletoe.span_token.RawText):
-                            file_content = _code_text.content
-                    lang = "txt"
-                    if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
-                        lang = _escaped_code.language
-                    file_name = get_filename(line=escaped_cell, language=lang)
-                    _rendered.append(
-                        File(file_name=file_name, file_data=file_content.encode(), caption="")
-                    )
-                else:
-                    _rendered.append(File(file_name="letter.txt", file_data=unescaped_cell.encode(), caption=""))
-            else:
-                _rendered.append(Text(content=escaped_cell))
+        _task = [("base", cell) for cell in _packed]
+        # [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
+
+        interpreters_map = {interpreter.name: interpreter for interpreter in Interpreters}
+        for interpreter in Interpreters:
+            _task = interpreter.merge(_task)
+        for interpreter in Interpreters:
+            _new_task = []
+            for _per_task in _task:
+                _new_task.extend(interpreter.split(_per_task))
+            _task = _new_task
+
+        for _per_task in _task:
+            task_type, token_pairs = _per_task
+            if task_type not in interpreters_map:
+                raise ValueError("Invalid task type.")
+            interpreter = interpreters_map[task_type]
+            _rendered.extend(interpreter.render_task(
+                task=_per_task,
+                render_lines_func=render_lines,
+                render_block_func=render_block,
+                max_word_count=max_word_count
+            ))
     return _rendered
 
 

@@ -15,6 +15,29 @@ The **0-1 Knapsack Problem** involves finding the optimal way to fill a knapsack
 
 ---
 
+**mermaid**
+
+```mermaid
+graph TD
+    A[Start] --> B{Condition}
+    B -->|是的| C[Process 1]
+    C --> D[Process 2]
+    D --> E[End]
+    B -->|No| F[Process 3]
+    F --> E
+```
+
+**wrong mermaid**
+
+```mermaid
+A[Start] --> B{Condition}
+B -->|Yes| C[Process 1]
+C --> D[Process 2]
+D --> E[End]
+B -->|No| F[Process 3]
+F --> E
+```
+
 ### Method 1: Recursive + Memoization (Top-Down)
 
 ```python
@@ -70,14 +93,14 @@ print(f"Maximum Value (Recursive + Memoization): {max_value}")
 **Key Points:**
 
 1. **Base Condition**:
-   - If no items are left (`n == 0`) or capacity is zero (`capacity == 0`), the value is `0`.
+    - If no items are left (`n == 0`) or capacity is zero (`capacity == 0`), the value is `0`.
 2. **Memoization**:
-   - Results of subproblems `(n, capacity)` are stored in the `memo` dictionary to avoid redundant calculations.
+    - Results of subproblems `(n, capacity)` are stored in the `memo` dictionary to avoid redundant calculations.
 3. **Recursive Decisions**:
-   - If an item is too heavy, it is skipped.
-   - Otherwise, choose from two options:
-     - Exclude the current item.
-     - Include the current item and add its value.
+    - If an item is too heavy, it is skipped.
+    - Otherwise, choose from two options:
+        - Exclude the current item.
+        - Include the current item and add its value.
 4. **Time Complexity**: `O(n * W)`, where `n` is the number of items and `W` is the capacity.
 5. **Space Complexity**: `O(n * W)` for memo storage.
 
@@ -123,15 +146,15 @@ print(f"Maximum Value (Dynamic Programming): {max_value}")
 **Key Points:**
 
 1. **State Definition**:
-   - `dp[i][j]` denotes the maximum value attained with the first `i` items and a backpack capacity of `j`.
+    - `dp[i][j]` denotes the maximum value attained with the first `i` items and a backpack capacity of `j`.
 2. **Transition Formula**:
-   - If the item is too heavy, `dp[i][j] = dp[i-1][j]`.
-   - Otherwise, calculate `dp[i][j] = max(dp[i-1][j], dp[i-1][j - weights[i-1]] + values[i-1])`.
+    - If the item is too heavy, `dp[i][j] = dp[i-1][j]`.
+    - Otherwise, calculate `dp[i][j] = max(dp[i-1][j], dp[i-1][j - weights[i-1]] + values[i-1])`.
 3. **Initialization**:
-   - `dp[i][0] = 0` and `dp[0][j] = 0`, meaning no items or zero capacity yields zero value.
+    - `dp[i][0] = 0` and `dp[0][j] = 0`, meaning no items or zero capacity yields zero value.
 4. Complexity:
-   - **Time**: `O(n * W)`.
-   - **Space**: `O(n * W)`.
+    - **Time**: `O(n * W)`.
+    - **Space**: `O(n * W)`.
 
 ---
 
@@ -169,6 +192,7 @@ print(f"Maximum Value (Optimized Dynamic Programming): {max_value}")
 ```
 
 **Advantages**:
+
 - **Time Complexity**: `O(n * W)`.
 - **Space Complexity**: Reduced to `O(W)`.
 
@@ -176,129 +200,131 @@ print(f"Maximum Value (Optimized Dynamic Programming): {max_value}")
 
 ### Summary
 
-| Method                    | Time Complexity | Space Complexity | Comment                                |
-|---------------------------|-----------------|------------------|----------------------------------------|
-| Recursion + Memoization   | `O(n * W)`      | `O(n * W)`       | Conceptually simple and intuitive.     |
-| DP (Bottom-Up, 2D Table)  | `O(n * W)`      | `O(n * W)`       | Easy to implement and understand.      |
-| DP (Space-Optimized)      | `O(n * W)`      | `O(W)`           | Efficient in space usage.              |
+| Method                   | Time Complexity | Space Complexity | Comment                            |
+|--------------------------|-----------------|------------------|------------------------------------|
+| Recursion + Memoization  | `O(n * W)`      | `O(n * W)`       | Conceptually simple and intuitive. |
+| DP (Bottom-Up, 2D Table) | `O(n * W)`      | `O(n * W)`       | Easy to implement and understand.  |
+| DP (Space-Optimized)     | `O(n * W)`      | `O(W)`           | Efficient in space usage.          |
 
 ---
 
 ### React UI Example for 0-1 Knapsack
 
-Here is a React component that accepts user input for weights, values, and capacity, then computes the maximum achievable value in the knapsack:
+Here is a React component that accepts user input for weights, values, and capacity, then computes the maximum
+achievable value in the knapsack:
 
 ```jsx
 // KnapsackProblem.js
 import React, {useState} from "react";
 
 const KnapsackProblem = () => {
-  const [weights, setWeights] = useState("");
-  const [values, setValues] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [result, setResult] = useState(null);
+    const [weights, setWeights] = useState("");
+    const [values, setValues] = useState("");
+    const [capacity, setCapacity] = useState("");
+    const [result, setResult] = useState(null);
 
-  const solveKnapsack = (weights, values, capacity) => {
-    const n = weights.length;
-    const dp = Array.from({ length: n + 1 }, () =>
-      Array(capacity + 1).fill(0)
-    );
+    const solveKnapsack = (weights, values, capacity) => {
+        const n = weights.length;
+        const dp = Array.from({length: n + 1}, () =>
+            Array(capacity + 1).fill(0)
+        );
 
-    for (let i = 1; i <= n; i++) {
-      for (let j = 1; j <= capacity; j++) {
-        if (weights[i - 1] > j) {
-          dp[i][j] = dp[i - 1][j];
-        } else {
-          dp[i][j] = Math.max(
-            dp[i - 1][j],
-            dp[i - 1][j - weights[i - 1]] + values[i - 1]
-          );
+        for (let i = 1; i <= n; i++) {
+            for (let j = 1; j <= capacity; j++) {
+                if (weights[i - 1] > j) {
+                    dp[i][j] = dp[i - 1][j];
+                } else {
+                    dp[i][j] = Math.max(
+                        dp[i - 1][j],
+                        dp[i - 1][j - weights[i - 1]] + values[i - 1]
+                    );
+                }
+            }
         }
-      }
-    }
 
-    return dp[n][capacity];
-  };
+        return dp[n][capacity];
+    };
 
-  const handleCalculate = () => {
-    const weightArray = weights
-      .split(",")
-      .map((w) => parseInt(w.trim(), 10));
-    const valueArray = values
-      .split(",")
-      .map((v) => parseInt(v.trim(), 10));
-    const maxCapacity = parseInt(capacity, 10);
+    const handleCalculate = () => {
+        const weightArray = weights
+            .split(",")
+            .map((w) => parseInt(w.trim(), 10));
+        const valueArray = values
+            .split(",")
+            .map((v) => parseInt(v.trim(), 10));
+        const maxCapacity = parseInt(capacity, 10);
 
-    if (weightArray.length !== valueArray.length || isNaN(maxCapacity)) {
-      alert("Invalid inputs!");
-      return;
-    }
+        if (weightArray.length !== valueArray.length || isNaN(maxCapacity)) {
+            alert("Invalid inputs!");
+            return;
+        }
 
-    const maxValue = solveKnapsack(weightArray, valueArray, maxCapacity);
-    setResult(maxValue);
-  };
+        const maxValue = solveKnapsack(weightArray, valueArray, maxCapacity);
+        setResult(maxValue);
+    };
 
-  return (
-    <div>
-      <h1>0-1 Knapsack Problem</h1>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
-       <p>Enter weights, values, and capacity to calculate the maximum value:</p>
-      <div>
-        <label>
-          Capacity:
-          <input
-            type="number"
-            value={capacity}
-            onChange={(e) => setCapacity(e.target.value)}
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Weights (comma-separated):
-          <input
-            type="text"
-            value={weights}
-            onChange={(e) => setWeights(e.target.value)}
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Values (comma-separated):
-          <input
-            type="text"
-            value={values}
-            onChange={(e) => setValues(e.target.value)}
-          />
-        </label>
-      </div>
-      <button onClick={handleCalculate}>Calculate Maximum Value</button>
-      {result !== null && <p>Maximum Value: {result}</p>}
-    </div>
-  );
+    return (
+        <div>
+            <h1>0-1 Knapsack Problem</h1>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <div> UUID: 0-1-knapsack-problem-1 00000000000000000000000000000000000000000000000000000000</div>
+            <p>Enter weights, values, and capacity to calculate the maximum value:</p>
+            <div>
+                <label>
+                    Capacity:
+                    <input
+                        type="number"
+                        value={capacity}
+                        onChange={(e) => setCapacity(e.target.value)}
+                    />
+                </label>
+            </div>
+            <div>
+                <label>
+                    Weights (comma-separated):
+                    <input
+                        type="text"
+                        value={weights}
+                        onChange={(e) => setWeights(e.target.value)}
+                    />
+                </label>
+            </div>
+            <div>
+                <label>
+                    Values (comma-separated):
+                    <input
+                        type="text"
+                        value={values}
+                        onChange={(e) => setValues(e.target.value)}
+                    />
+                </label>
+            </div>
+            <button onClick={handleCalculate}>Calculate Maximum Value</button>
+            {result !== null && <p>Maximum Value: {result}</p>}
+        </div>
+    );
 };
 
 export default KnapsackProblem;
 ```
 
-This React code provides a simple user interface to input weights, values, and capacity, calculates the result using a DP function, and renders the maximum value.
+This React code provides a simple user interface to input weights, values, and capacity, calculates the result using a
+DP function, and renders the maximum value.
