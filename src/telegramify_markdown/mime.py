@@ -1,12 +1,11 @@
 # NOTE: Maybe we can use https://github.com/google/magika/ instead.
-import logging
+
 import re
 from pathlib import Path
 from typing import Optional
 
-# Configure the logger
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from telegramify_markdown.logger import logger
+
 default_language_to_ext = {
     "python": "py",
     "javascript": "js",
