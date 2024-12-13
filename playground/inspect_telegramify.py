@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown.interpreters import ContentTypes
 from telegramify_markdown.customize import markdown_symbol
+from telegramify_markdown.type import ContentTypes
 
 tips = """
 telegramify_markdown.telegramify 

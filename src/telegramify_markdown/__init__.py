@@ -14,7 +14,7 @@ from .logger import logger
 from .mermaid import render_mermaid
 from .mime import get_filename
 from .render import TelegramMarkdownRenderer, escape_markdown
-from .type import Text, File, Photo
+from .type import Text, File, Photo, ContentTypes
 
 __all__ = [
     "escape_markdown",
@@ -23,6 +23,7 @@ __all__ = [
     "telegramify",
     "BaseInterpreter",
     "Interpreters",
+    "ContentTypes",
 ]
 latex_escape_helper = LatexToUnicodeHelper()
 

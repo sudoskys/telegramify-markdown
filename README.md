@@ -18,6 +18,7 @@ for LLM responses, GitHub README files, and more.
   ensure
   its effectiveness.
 - We also support Latex Visualization(escape) and Expanded Citation.
+- Mermaid Diagrams render supported.
 
 > [!NOTE]
 > If you're interested, there's also a Node.js version of the library
@@ -40,10 +41,14 @@ pdm add telegramify-markdown
 ### 🤔 What you want to do?
 
 - If you just want to send *static text* and don't want to worry about formatting,
-  check: **[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)**
+  check: *
+  *[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)
+  **
 
 - If you are developing an *LLM application* and need to send potentially **super-long text**, please
-  check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
+  check: *
+  *[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+  **
 
 ## 👀 Use case
 
@@ -139,7 +144,9 @@ print(converted)
 
 ### `telegramify_case`
 
-please check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
+please check: *
+*[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+**
 
 ## 🔨 Supported Input
 
