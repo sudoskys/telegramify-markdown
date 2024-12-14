@@ -96,57 +96,6 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-class PackHelper(object):
-    @staticmethod
-    def process_long_pack(__token1_l: list, __token2_l: list, render_func: callable):
-        """
-        Process the long pack.
-        :param __token1_l: Escaped tokens
-        :param __token2_l: Unescaped tokens
-        :param render_func: The render function
-        :return:
-        """
-        # 如果超过最大字数限制
-        if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
-                __token1_l) == 1 and len(__token2_l) == 1:
-            # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
-            _escaped_code = __token1_l[0]
-            _unescaped_code_child = list(__token2_l[0].children)
-            file_content = render_func(__token2_l)
-            if _unescaped_code_child:
-                _code_text = _unescaped_code_child[0]
-                if isinstance(_code_text, mistletoe.span_token.RawText):
-                    file_content = _code_text.content
-            lang = "txt"
-            if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
-                lang = _escaped_code.language
-            if lang.lower() == "mermaid":
-                try:
-                    image_io, caption = render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
-                    return [Photo(file_name="mermaid.png", file_data=image_io.getvalue(), caption=caption)]
-                except Exception as e:
-                    pass
-            file_name = get_filename(line=render_func(__token1_l), language=lang)
-            return [File(file_name=file_name, file_data=file_content.encode(), caption="")]
-        # 如果超过最大字数限制
-        return [File(file_name="letter.txt", file_data=render_func(__token2_l).encode(), caption="")]
-
-    @staticmethod
-    def process_short_pack(__token1_l, __token2_l, render_func):
-        """
-        Process the short pack.
-        :param __token1_l: Escaped tokens
-        :param __token2_l: Unescaped tokens
-        :param render_func: The render function
-        :return:
-        """
-        _processed = []
-        escaped_cell = render_func(__token1_l)
-        # 没有超过最大字数限制
-        _processed.append(Text(content=escaped_cell))
-        return _processed
-
-
 def telegramify(
         content: str,
         max_line_length: int = None,
