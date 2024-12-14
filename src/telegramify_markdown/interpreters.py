@@ -53,7 +53,7 @@ class BaseInterpreter(object):
                     token1_l) == 1 and len(token2_l) == 1:
                 # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
                 _escaped_code = token1_l[0]
-                _unescaped_code_child = list(token1_l[0].children)
+                _unescaped_code_child = list(token2_l[0].children)
                 file_content = render_block_func(token2_l)
                 if _unescaped_code_child:
                     _code_text = _unescaped_code_child[0]
