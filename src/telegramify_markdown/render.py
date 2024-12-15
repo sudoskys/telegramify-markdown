@@ -193,7 +193,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             max_line_length: int
     ) -> Iterable[str]:
         yield from self.span_to_lines(token.children, max_line_length=max_line_length)
-        yield formatting.escape_markdown("——" * 5)
+        yield formatting.escape_markdown("───────────────────")
 
     def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Fragment]:
         return super().render_emphasis(token)
