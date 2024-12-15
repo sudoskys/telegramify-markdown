@@ -12,6 +12,7 @@ dependencies = [
     "Pillow>=10.4.0",
     "pydantic>=2.10.3",
     "aiohttp>=3.10.11",
+    "aiohttp-client-cache>=0.12.4",
 ]
 requires-python = ">=3.8"
 readme = "README.md"

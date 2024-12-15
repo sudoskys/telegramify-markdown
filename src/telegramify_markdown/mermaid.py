@@ -3,12 +3,12 @@ import base64
 import dataclasses
 import json
 import zlib
-from functools import lru_cache
 from io import BytesIO
 from typing import Union, Tuple
 
 from PIL import Image
-from aiohttp import ClientSession
+from aiohttp_client_cache import CachedSession
+from aiohttp_client_cache.backends import CacheBackend
 
 from telegramify_markdown.logger import logger
 
@@ -18,7 +18,6 @@ class MermaidConfig:
     theme: str = "neutral"
 
 
-@lru_cache(maxsize=128)
 async def download_image(url: str) -> BytesIO:
     """
     Download the image from the URL asynchronously.
@@ -30,7 +29,7 @@ async def download_image(url: str) -> BytesIO:
         "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                        "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
     }
-    async with ClientSession() as session:
+    async with CachedSession(cache=CacheBackend(expire_after=60 * 60)) as session:
         try:
             async with session.get(url, headers=headers, timeout=10) as response:
                 response.raise_for_status()

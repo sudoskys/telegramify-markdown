@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:ff48f0fc758b96325eac2025eea3d86e085fce7556ac429d5dca7dcabccd1571"
+content_hash = "sha256:5949ee442a4f9c9caaf83d4e2e838514871a54b5afb45f834fb30e1c5f1e1131"
 
 [[metadata.targets]]
 requires_python = ">=3.8"
@@ -128,6 +128,23 @@ files = [
     {file = "aiohttp-3.10.11-cp39-cp39-win32.whl", hash = "sha256:22b7c540c55909140f63ab4f54ec2c20d2635c0289cdd8006da46f3327f971b9"},
     {file = "aiohttp-3.10.11-cp39-cp39-win_amd64.whl", hash = "sha256:7b26b1551e481012575dab8e3727b16fe7dd27eb2711d2e63ced7368756268fb"},
     {file = "aiohttp-3.10.11.tar.gz", hash = "sha256:9dc2b8f3dcab2e39e0fa309c8da50c3b55e6f34ab25f1a71d3288f24924d33a7"},
+]
+
+[[package]]
+name = "aiohttp-client-cache"
+version = "0.12.4"
+requires_python = "<4.0,>=3.8"
+summary = "Persistent cache for aiohttp requests"
+groups = ["default"]
+dependencies = [
+    "aiohttp<4.0,>=3.8",
+    "attrs>=21.2",
+    "itsdangerous>=2.0",
+    "url-normalize<2.0,>=1.4",
+]
+files = [
+    {file = "aiohttp_client_cache-0.12.4-py3-none-any.whl", hash = "sha256:5aa7834eaf550a1a3a99e23a9fc9320b0e360788c6d2689941d611a5ec807b0e"},
+    {file = "aiohttp_client_cache-0.12.4.tar.gz", hash = "sha256:e60fe816136b5b1d66f3bb6b272ab81d97854ea1e4d9b57085a360426967d265"},
 ]
 
 [[package]]
@@ -414,6 +431,17 @@ groups = ["default"]
 files = [
     {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
     {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+requires_python = ">=3.8"
+summary = "Safely pass data to untrusted environments and back."
+groups = ["default"]
+files = [
+    {file = "itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef"},
+    {file = "itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173"},
 ]
 
 [[package]]
@@ -914,6 +942,17 @@ files = [
 ]
 
 [[package]]
+name = "six"
+version = "1.17.0"
+requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
+summary = "Python 2 and 3 compatibility utilities"
+groups = ["default"]
+files = [
+    {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
+    {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.12.2"
 requires_python = ">=3.8"
@@ -922,6 +961,20 @@ groups = ["default"]
 files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
+]
+
+[[package]]
+name = "url-normalize"
+version = "1.4.3"
+requires_python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+summary = "URL normalization for Python"
+groups = ["default"]
+dependencies = [
+    "six",
+]
+files = [
+    {file = "url-normalize-1.4.3.tar.gz", hash = "sha256:d23d3a070ac52a67b83a1c59a0e68f8608d1cd538783b401bc9de2c0fac999b2"},
+    {file = "url_normalize-1.4.3-py2.py3-none-any.whl", hash = "sha256:ec3c301f04e5bb676d333a7fa162fa977ad2ca04b7e652bfc9fac4e405728eed"},
 ]
 
 [[package]]

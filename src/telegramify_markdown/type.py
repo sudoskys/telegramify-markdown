@@ -1,7 +1,8 @@
-import dataclasses
 from abc import ABCMeta
 from enum import Enum
 from typing import Tuple, List, Any, Union
+
+from pydantic import dataclasses
 
 TaskType = Tuple[str, List[Tuple[Any, Any]]]
 SentType = List[Union["Text", "File", "Photo"]]
@@ -33,7 +34,10 @@ class Text(RenderedContent):
 class File(RenderedContent):
     file_name: str
     file_data: bytes
+
     caption: str = ""
+    """Please use render_lines_func to render the content."""
+
     content_type: ContentTypes = ContentTypes.FILE
 
 
@@ -41,5 +45,8 @@ class File(RenderedContent):
 class Photo(RenderedContent):
     file_name: str
     file_data: bytes
+
     caption: str = ""
+    """Please use render_lines_func to render the content."""
+
     content_type: ContentTypes = ContentTypes.PHOTO
