@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import dataclasses
 import json
@@ -6,8 +7,8 @@ from functools import lru_cache
 from io import BytesIO
 from typing import Union, Tuple
 
-import requests
 from PIL import Image
+from aiohttp import ClientSession
 
 from telegramify_markdown.logger import logger
 
@@ -17,26 +18,26 @@ class MermaidConfig:
     theme: str = "neutral"
 
 
-# 设置基于 URL 的缓存
 @lru_cache(maxsize=128)
-def download_image(url: str) -> BytesIO:
+async def download_image(url: str) -> BytesIO:
     """
-    Download the image from the URL.
+    Download the image from the URL asynchronously.
     :param url: Image URL
-    :raises: requests.HTTPError, requests.ConnectionError, requests.Timeout
+    :raises: aiohttp.ClientError, asyncio.TimeoutError
     """
     logger.debug(f"telegramify_markdown: Downloading mermaid image from {url}")
     headers = {
         "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                        "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
     }
-    response = requests.get(url, headers=headers, timeout=10, stream=True)
-    try:
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        logger.error(f"telegramify_markdown: HTTP Error: {e}")
-        raise ValueError("telegramify_markdown: Cant render the mermaid graph") from e
-    return BytesIO(response.content)
+    async with ClientSession() as session:
+        try:
+            async with session.get(url, headers=headers, timeout=10) as response:
+                response.raise_for_status()
+                content = await response.read()
+        except Exception as e:
+            raise ValueError(f"telegramify_markdown: Render failed on the mermaid graph from {url}") from e
+    return BytesIO(content)
 
 
 def is_image(data: BytesIO) -> bool:
@@ -133,12 +134,12 @@ def get_mermaid_ink_url(graph_markdown: str) -> str:
     return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?theme=neutral&width=500&scale=2&type=webp'
 
 
-def render_mermaid(diagram: str) -> Tuple[BytesIO, str]:
+async def render_mermaid(diagram: str) -> Tuple[BytesIO, str]:
     # render picture
     img_url = get_mermaid_ink_url(diagram)
     caption = get_mermaid_live_url(diagram)
     # Download the image
-    img_data = download_image(img_url)
+    img_data = await download_image(img_url)
     if not is_image(img_data):
         raise ValueError("The URL does not return an image.")
     img_data.seek(0)  # Reset the file pointer to the beginning
@@ -147,16 +148,20 @@ def render_mermaid(diagram: str) -> Tuple[BytesIO, str]:
 
 if __name__ == '__main__':
     mermaid_md = """
-    ```
-    graph TD
-        A[Christmas] -->|Get money| B(Go shopping)
-        B --> C{Let me think}
-        C -->|One| D[Laptop]
-        C -->|Two| E[你好]
-        C -->|Three| F[fa:fa-car Car]
-    ```
+    sequenceDiagram
+        Alice ->> Bob: Hello Bob, how are you?
+        Bob-->>John: How about you John?
+        Bob--x Alice: I am good thanks!
+        Bob-x John: I am good thanks!
+        Note right of John: Bob thinks a long<br/>long time, so long<br/>that the text does<br/>not fit on a row.
     """
-    t1 = render_mermaid(mermaid_md)
-    print(t1)
-    # 展示图片
-    Image.open(t1[0]).show()
+
+
+    async def run():
+        t1 = await render_mermaid(mermaid_md)
+        print(t1)
+        # 展示图片
+        Image.open(t1[0]).show()
+
+
+    asyncio.run(run())

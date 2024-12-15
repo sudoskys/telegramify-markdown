@@ -11,33 +11,33 @@ from telegramify_markdown.type import TaskType, File, Text, Photo, SentType
 class BaseInterpreter(object):
     name = "base"
 
-    def merge(self, tasks: List[TaskType]) -> List[TaskType]:
+    async def merge(self, tasks: List[TaskType]) -> List[TaskType]:
         """
         Merge the tasks.
-        :param tasks:  [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
+        :param tasks:  [(base, [(escaped,unescaped),(escaped,unescaped)]), (base, [(escaped,unescaped),(escaped,unescaped)])]
         :return:
         """
         return tasks
 
-    def split(self, task: TaskType) -> List[TaskType]:
+    async def split(self, task: TaskType) -> List[TaskType]:
         """
         Split the task.
-        :param task: (base, [(token1,token2),(token1,token2)])
-        :return: [(base, [(token1,token2),(token1,token2)]),....newTask]
+        :param task: (base, [(escaped,unescaped),(escaped,unescaped)])
+        :return: [(base, [(escaped,unescaped),(escaped,unescaped)]),....newTask]
         """
         return [task]
 
-    def render_task(self,
-                    task: TaskType,
-                    render_block_func: Callable[[List[Any]], str],
-                    render_lines_func: Callable[[str], str],
-                    max_word_count: int = 4090
-                    ) -> SentType:
+    async def render_task(self,
+                          task: TaskType,
+                          render_block_func: Callable[[List[Any]], str],
+                          render_lines_func: Callable[[str], str],
+                          max_word_count: int = 4090
+                          ) -> SentType:
         """
         Render the task.
         :param render_block_func: The render block function
         :param render_lines_func: The render lines function
-        :param task: (base, [(token1,token2),(token1,token2)])
+        :param task: (base, [(escaped,unescaped),(escaped,unescaped)])
         :param max_word_count: The maximum number of words in a single message.
         :return: SentType
         """
@@ -81,19 +81,19 @@ class BaseInterpreter(object):
 class MermaidInterpreter(BaseInterpreter):
     name = "mermaid"
 
-    def merge(self, tasks: List[TaskType]) -> List[TaskType]:
+    async def merge(self, tasks: List[TaskType]) -> List[TaskType]:
         """
         Merge the tasks.
-        :param tasks:  [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
+        :param tasks:  [(base, [(escaped,unescaped),(escaped,unescaped)]), (base, [(escaped,unescaped),(escaped,unescaped)])]
         :return:
         """
         return tasks
 
-    def split(self, task: TaskType) -> List[TaskType]:
+    async def split(self, task: TaskType) -> List[TaskType]:
         """
         Split the task.
-        :param task: (base, [(token1,token2),(token1,token2)])
-        :return: [(mermaid, [(token1,token2),(token1,token2)]),....newTask]
+        :param task: (base, [(escaped,unescaped),(escaped,unescaped)])
+        :return: [(mermaid, [(escaped,unescaped),(escaped,unescaped)]),....newTask]
         """
         task_type, token_pairs = task
         # 只处理 base 块
@@ -121,15 +121,15 @@ class MermaidInterpreter(BaseInterpreter):
             tasks.append(("base", current_base_tokens))
         return tasks
 
-    def render_task(self,
-                    task: TaskType,
-                    render_block_func: Callable[[List[Any]], str],
-                    render_lines_func: Callable[[str], str],
-                    max_word_count: int = 4090
-                    ) -> SentType:
+    async def render_task(self,
+                          task: TaskType,
+                          render_block_func: Callable[[List[Any]], str],
+                          render_lines_func: Callable[[str], str],
+                          max_word_count: int = 4090
+                          ) -> SentType:
         """
         Render the task.#
-        :param task: (base, [(token1,token2),(token1,token2)])  of [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
+        :param task: (base, [(escaped,unescaped),(escaped,unescaped)])  of [(base, [(escaped,unescaped),(escaped,unescaped)]), (base, [(escaped,unescaped),(escaped,unescaped)])]
         :param render_block_func: The render block function
         :param render_lines_func: The render lines function
         :param max_word_count: The maximum number of words in a single message.
@@ -141,30 +141,31 @@ class MermaidInterpreter(BaseInterpreter):
         # 仅处理 Mermaid 块
         if len(token_pairs) != 1:
             raise ValueError("Invalid token length for MermaidInterpreter.")
-        token1_l = list(__token1 for __token1, __token2 in token_pairs)
-        token2_l = list(__token2 for __token1, __token2 in token_pairs)
-        if not all(isinstance(_per_token, mistletoe.block_token.CodeFence) for _per_token in token1_l):
+        escaped_tokens = list(__token1 for __token1, __token2 in token_pairs)
+        unescape_tokens = list(__token2 for __token1, __token2 in token_pairs)
+        if not all(isinstance(_per_token, mistletoe.block_token.CodeFence) for _per_token in escaped_tokens):
             raise ValueError("Invalid token type for MermaidInterpreter.")
-        _escaped_code = token2_l[0]
+        unescaped_code_token = unescape_tokens[0]
         if (isinstance(
-                _escaped_code,
+                unescaped_code_token,
                 mistletoe.block_token.CodeFence
-        ) and _escaped_code.language.lower() == "mermaid"):
-            file_content = render_block_func(token1_l)
-            _unescaped_code_child = list(_escaped_code.children)
+        ) and unescaped_code_token.language.lower() == "mermaid"):
+            file_content = render_block_func(unescape_tokens)
+            _unescaped_code_child = list(unescaped_code_token.children)
             if _unescaped_code_child:
                 _raw_text = _unescaped_code_child[0]
                 if isinstance(_raw_text, mistletoe.span_token.RawText):
                     file_content = _raw_text.content
             try:
-                img_io, url = render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
+                img_io, url = await render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
                 message = f"[edit in mermaid.live]({url})"
             except Exception as e:
+                logger.warn(f"Mermaid render error: {e}")
                 return [
                     File(
-                        file_name="mermaid_code.txt",
-                        file_data=render_block_func(token2_l).encode(),
-                        caption=""
+                        file_name="invalid_mermaid.txt",
+                        file_data=render_block_func(unescape_tokens).encode(),
+                        caption="invalid_mermaid"
                     )
                 ]
             else:
@@ -176,8 +177,5 @@ class MermaidInterpreter(BaseInterpreter):
                     )
                 ]
         return [
-            File(file_name="mermaid_code.txt", file_data=render_block_func(token2_l).encode(), caption="")
+            File(file_name="mermaid_code.txt", file_data=render_block_func(unescape_tokens).encode(), caption="")
         ]
-
-
-Interpreters = [BaseInterpreter(), MermaidInterpreter()]

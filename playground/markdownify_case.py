@@ -8,11 +8,10 @@ import telegramify_markdown
 
 # Customize the markdownify
 telegramify_markdown.customize.strict_markdown = False  # we need send underline text
-telegramify_markdown.customize.latex_escape = True  # we need to escape latex
-
 # Test html tags
 html_t = telegramify_markdown.markdownify(
-    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;"
+    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;",
+    latex_escape=True
 )
 print(html_t)
 
@@ -118,7 +117,8 @@ emoji_md = r"""
 converted = telegramify_markdown.markdownify(
     md,
     max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
-    normalize_whitespace=False
+    normalize_whitespace=False,
+    latex_escape=True
 )
 print(converted)
 # export Markdown to Telegram MarkdownV2 style.
