@@ -155,6 +155,7 @@ async def telegramify(
 
         def render_lines(lines: str):
             doc = mistletoe.Document(lines=lines)
+            _update_block(doc)
             return renderer.render(doc)
 
         _stack = []

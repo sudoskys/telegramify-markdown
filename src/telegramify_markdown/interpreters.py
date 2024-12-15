@@ -62,14 +62,6 @@ class BaseInterpreter(object):
                 lang = "txt"
                 if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
                     lang = _escaped_code.language
-                """
-                if lang.lower() == "mermaid":
-                    try:
-                        image_io, caption = render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
-                        return [Photo(file_name="mermaid.png", file_data=image_io.getvalue(), caption=caption)]
-                    except Exception as e:
-                        pass
-                """
                 file_name = get_filename(line=render_block_func(token1_l), language=lang)
                 return [File(file_name=file_name, file_data=file_content.encode(), caption="")]
             # 如果超过最大字数限制
@@ -165,7 +157,7 @@ class MermaidInterpreter(BaseInterpreter):
                     File(
                         file_name="invalid_mermaid.txt",
                         file_data=render_block_func(unescape_tokens).encode(),
-                        caption="invalid_mermaid"
+                        caption=render_lines_func("invalid_mermaid")
                     )
                 ]
             else:
