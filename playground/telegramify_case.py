@@ -3,7 +3,6 @@ import os
 import pathlib
 from time import sleep
 
-from aiohttp import ClientSession
 from dotenv import load_dotenv
 from telebot import TeleBot
 
@@ -33,15 +32,13 @@ md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding=
 
 # Write an async function to send message
 async def send_message():
-    global_session = ClientSession()
-    async with global_session:
-        boxs = await telegramify_markdown.telegramify(
-            content=md,
-            interpreters_use=[BaseInterpreter(), MermaidInterpreter(session=global_session)],  # Render mermaid diagram
-            latex_escape=True,
-            normalize_whitespace=True,
-            max_word_count=4090  # The maximum number of words in a single message.
-        )
+    boxs = await telegramify_markdown.telegramify(
+        content=md,
+        interpreters_use=[BaseInterpreter(), MermaidInterpreter(session=None)],  # Render mermaid diagram
+        latex_escape=True,
+        normalize_whitespace=True,
+        max_word_count=4090  # The maximum number of words in a single message.
+    )
     for item in boxs:
         print("Sent one item")
         sleep(0.2)
