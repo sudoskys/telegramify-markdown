@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 from time import sleep
@@ -25,16 +26,24 @@ bot = TeleBot(telegram_bot_token)
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding="utf-8")
-boxs = telegramify_markdown.telegramify(md)
-for item in boxs:
-    print("Sent one item")
-    sleep(0.2)
-    if item.content_type == ContentTypes.TEXT:
-        print("TEXT")
-        print(item.content)
-    elif item.content_type == ContentTypes.PHOTO:
-        print("PHOTO")
-        print(item.caption)
-    elif item.content_type == ContentTypes.FILE:
-        print("FILE")
-        print(item.file_name)
+
+
+async def main():
+    boxs = await telegramify_markdown.telegramify(md)
+    for item in boxs:
+        print("Sent one item")
+        sleep(0.2)
+        if item.content_type == ContentTypes.TEXT:
+            print("TEXT")
+            print(item.content)
+        elif item.content_type == ContentTypes.PHOTO:
+            print("PHOTO")
+            print(item.caption)
+        elif item.content_type == ContentTypes.FILE:
+            print("FILE")
+            print(item.file_name)
+
+
+if __name__ == "__main__":
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(main())

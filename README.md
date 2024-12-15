@@ -18,7 +18,7 @@ for LLM responses, GitHub README files, and more.
   ensure
   its effectiveness.
 - We also support Latex Visualization(escape) and Expanded Citation.
-- Mermaid Diagrams render supported.
+- (telegramify) Mermaid Diagrams render supported.
 
 > [!NOTE]
 > If you're interested, there's also a Node.js version of the library
@@ -41,10 +41,18 @@ pdm add telegramify-markdown
 ### 🤔 What you want to do?
 
 - If you just want to send *static text* and don't want to worry about formatting,
-  check: **[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)**
+  check:[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)
 
-- If you are developing an *LLM application* and need to send potentially **super-long text**, please
-  check: **[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)**
+- If you are developing an *LLM application* or need to send potentially **super-long text**, please
+  check:[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+
+We have two main functions: `markdownify` and `telegramify`.
+
+`markdownify`: Just converts raw Markdown text to Telegram's MarkdownV2 format.
+
+`telegramify`: Spilt long text into multiple chunks, convert format and use Interpreter to render code block to File, Image etc.
+
+>`Interpreter` can be easily customized to inspect the rendering process in `telegramify`.
 
 ## 👀 Use case
 
@@ -62,7 +70,6 @@ customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the 
 customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False, or it will be converted to bold as telegram does.
 customize.cite_expandable = True  # If you want to enable expandable citation, set it to True.
-customize.latex_escape = True  # If you want to escape LaTeX symbols, set it to True.
 
 # Use `r` to avoid escaping the backslash.
 markdown_text = r""" 
@@ -138,11 +145,9 @@ print(converted)
 # export Markdown to Telegram MarkdownV2 style.
 ````
 
-### `telegramify_case`
+### `telegramify`
 
-please check: *
-*[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
-**
+please check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
 
 ## 🔨 Supported Input
 

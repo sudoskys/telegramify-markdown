@@ -7,7 +7,7 @@ from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
-from .interpreters import Text, File, Photo, BaseInterpreter, MermaidInterpreter, Interpreters
+from .interpreters import Text, File, Photo, BaseInterpreter, MermaidInterpreter
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
 from .logger import logger
@@ -22,7 +22,6 @@ __all__ = [
     "markdownify",
     "telegramify",
     "BaseInterpreter",
-    "Interpreters",
     "ContentTypes",
 ]
 latex_escape_helper = LatexToUnicodeHelper()
@@ -96,69 +95,21 @@ def _update_block(token: BlockToken):
         _update_text(token)
 
 
-class PackHelper(object):
-    @staticmethod
-    def process_long_pack(__token1_l: list, __token2_l: list, render_func: callable):
-        """
-        Process the long pack.
-        :param __token1_l: Escaped tokens
-        :param __token2_l: Unescaped tokens
-        :param render_func: The render function
-        :return:
-        """
-        # 如果超过最大字数限制
-        if all(isinstance(_per_token1, mistletoe.block_token.CodeFence) for _per_token1 in __token1_l) and len(
-                __token1_l) == 1 and len(__token2_l) == 1:
-            # 如果这个 pack 是完全的 code block，那么采用文件形式发送。否则采用文本形式发送。
-            _escaped_code = __token1_l[0]
-            _unescaped_code_child = list(__token2_l[0].children)
-            file_content = render_func(__token2_l)
-            if _unescaped_code_child:
-                _code_text = _unescaped_code_child[0]
-                if isinstance(_code_text, mistletoe.span_token.RawText):
-                    file_content = _code_text.content
-            lang = "txt"
-            if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
-                lang = _escaped_code.language
-            if lang.lower() == "mermaid":
-                try:
-                    image_io, caption = render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
-                    return [Photo(file_name="mermaid.png", file_data=image_io.getvalue(), caption=caption)]
-                except Exception as e:
-                    pass
-            file_name = get_filename(line=render_func(__token1_l), language=lang)
-            return [File(file_name=file_name, file_data=file_content.encode(), caption="")]
-        # 如果超过最大字数限制
-        return [File(file_name="letter.txt", file_data=render_func(__token2_l).encode(), caption="")]
-
-    @staticmethod
-    def process_short_pack(__token1_l, __token2_l, render_func):
-        """
-        Process the short pack.
-        :param __token1_l: Escaped tokens
-        :param __token2_l: Unescaped tokens
-        :param render_func: The render function
-        :return:
-        """
-        _processed = []
-        escaped_cell = render_func(__token1_l)
-        # 没有超过最大字数限制
-        _processed.append(Text(content=escaped_cell))
-        return _processed
-
-
-def telegramify(
+async def telegramify(
         content: str,
+        *,
         max_line_length: int = None,
         normalize_whitespace=False,
-        latex_escape=None,
-        max_word_count: int = 4090
+        latex_escape: bool = True,
+        interpreters_use=None,
+        max_word_count: int = 4090,
 ) -> List[Union[Text, File, Photo]]:
     """
     Convert markdown content to Telegram Markdown format.
 
     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py
 
+    :param interpreters_use: The interpreters to use.
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
     :param normalize_whitespace: Whether to normalize whitespace.
@@ -168,13 +119,17 @@ def telegramify(
     :raises ValueError: If the token length mismatch.
     :raises Exception: Some other exceptions.
     """
+    if interpreters_use is None:
+        interpreters_use = [BaseInterpreter(), MermaidInterpreter()]
+    if not interpreters_use:
+        raise ValueError(
+            "No interpreters provided, at least `telegramify_markdown.interpreters.BaseInterpreter` is required."
+        )
     _rendered: List[Union[Text, File, Photo]] = []
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
     ) as renderer:
-        if latex_escape is None:
-            latex_escape = customize.latex_escape
         if latex_escape:
             content = escape_latex(content)
         document = mistletoe.Document(content)
@@ -217,35 +172,41 @@ def telegramify(
             _packed.append(_stack)
         _task = [("base", cell) for cell in _packed]
         # [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
-
-        interpreters_map = {interpreter.name: interpreter for interpreter in Interpreters}
-        for interpreter in Interpreters:
-            _task = interpreter.merge(_task)
-        for interpreter in Interpreters:
+        interpreters_map = {interpreter.name: interpreter for interpreter in interpreters_use}
+        if len(interpreters_map.keys()) != len(interpreters_use):
+            raise ValueError(f"Interpreter name conflict: {interpreters_use}")
+        run_interpreters = interpreters_map.values()
+        for interpreter in run_interpreters:
+            _task = await interpreter.merge(_task)
+        for interpreter in run_interpreters:
             _new_task = []
             for _per_task in _task:
-                _new_task.extend(interpreter.split(_per_task))
+                _new_task.extend(
+                    await interpreter.split(_per_task)
+                )
             _task = _new_task
 
         for _per_task in _task:
             task_type, token_pairs = _per_task
             if task_type not in interpreters_map:
-                raise ValueError("Invalid task type.")
+                raise ValueError(f"Cannot find interpreter for task type: {task_type}")
             interpreter = interpreters_map[task_type]
-            _rendered.extend(interpreter.render_task(
-                task=_per_task,
-                render_lines_func=render_lines,
-                render_block_func=render_block,
-                max_word_count=max_word_count
-            ))
+            _rendered.extend(
+                await interpreter.render_task(
+                    task=_per_task,
+                    render_lines_func=render_lines,
+                    render_block_func=render_block,
+                    max_word_count=max_word_count
+                ))
     return _rendered
 
 
 def markdownify(
         content: str,
+        *,
         max_line_length: int = None,
         normalize_whitespace=False,
-        latex_escape=None,
+        latex_escape: bool = True,
 ) -> str:
     """
     Convert markdown str to Telegram Markdown format.
@@ -263,8 +224,6 @@ def markdownify(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
     ) as renderer:
-        if latex_escape is None:
-            latex_escape = customize.latex_escape
         if latex_escape:
             content = escape_latex(content)
         document = mistletoe.Document(content)

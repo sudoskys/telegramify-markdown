@@ -17,8 +17,12 @@ class Symbol(object):
     # "☑️"
 
 
+# NOTE: Settings that are not part of global rendering **are not allowed** to be stored here!!
+# Prioritize function parameter passing to ensure definability
+
+# Markdown options
 markdown_symbol = Symbol()
+# Rendering options
 cite_expandable = True
 strict_markdown = True
 unescape_html = False
-latex_escape = False
