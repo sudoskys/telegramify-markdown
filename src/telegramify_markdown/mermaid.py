@@ -7,8 +7,7 @@ from io import BytesIO
 from typing import Union, Tuple
 
 from PIL import Image
-from aiohttp_client_cache import CachedSession
-from aiohttp_client_cache.backends import CacheBackend
+from aiohttp import ClientSession
 
 from telegramify_markdown.logger import logger
 
@@ -18,25 +17,41 @@ class MermaidConfig:
     theme: str = "neutral"
 
 
-async def download_image(url: str) -> BytesIO:
+async def download_image(
+        url: str,
+        session: ClientSession = None,
+) -> BytesIO:
     """
     Download the image from the URL asynchronously.
     :param url: Image URL
-    :raises: aiohttp.ClientError, asyncio.TimeoutError
+    :param session: Optional aiohttp.ClientSession. If not provided, a new session will be created.
+    :raises ValueError: If the request fails or the image cannot be downloaded.
+    :return: BytesIO object containing the image data.
     """
     logger.debug(f"telegramify_markdown: Downloading mermaid image from {url}")
     headers = {
         "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                        "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
     }
-    async with CachedSession(cache=CacheBackend(expire_after=60 * 60)) as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as response:
-                response.raise_for_status()
-                content = await response.read()
-        except Exception as e:
-            raise ValueError(f"telegramify_markdown: Render failed on the mermaid graph from {url}") from e
-    return BytesIO(content)
+
+    needs_closing = False
+
+    if session is None:
+        session = ClientSession()
+        needs_closing = True
+
+    try:
+        async with session.get(url, headers=headers, timeout=10) as response:
+            response.raise_for_status()  # Raise exception for HTTP errors (e.g., 404, 500)
+            content = await response.read()  # Read response content as bytes
+        return BytesIO(content)
+
+    except Exception as e:
+        raise ValueError(f"telegramify_markdown: Render failed on the mermaid graph from {url}") from e
+    finally:
+        # Only close the session if we created it
+        if needs_closing:
+            await session.close()
 
 
 def is_image(data: BytesIO) -> bool:
@@ -133,12 +148,18 @@ def get_mermaid_ink_url(graph_markdown: str) -> str:
     return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?theme=neutral&width=500&scale=2&type=webp'
 
 
-async def render_mermaid(diagram: str) -> Tuple[BytesIO, str]:
+async def render_mermaid(
+        diagram: str,
+        session: ClientSession = None,
+) -> Tuple[BytesIO, str]:
     # render picture
     img_url = get_mermaid_ink_url(diagram)
     caption = get_mermaid_live_url(diagram)
     # Download the image
-    img_data = await download_image(img_url)
+    img_data = await download_image(
+        url=img_url,
+        session=session
+    )
     if not is_image(img_data):
         raise ValueError("The URL does not return an image.")
     img_data.seek(0)  # Reset the file pointer to the beginning
