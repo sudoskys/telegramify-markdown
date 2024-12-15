@@ -1,4 +1,5 @@
 from typing import List, Any, Callable
+from typing import TYPE_CHECKING
 
 import mistletoe
 
@@ -6,6 +7,9 @@ from telegramify_markdown.logger import logger
 from telegramify_markdown.mermaid import render_mermaid
 from telegramify_markdown.mime import get_filename
 from telegramify_markdown.type import TaskType, File, Text, Photo, SentType
+
+if TYPE_CHECKING:
+    from aiohttp import ClientSession
 
 
 class BaseInterpreter(object):
@@ -72,6 +76,10 @@ class BaseInterpreter(object):
 
 class MermaidInterpreter(BaseInterpreter):
     name = "mermaid"
+    session = None
+
+    def __init__(self, session: "ClientSession" = None):
+        self.session = session
 
     async def merge(self, tasks: List[TaskType]) -> List[TaskType]:
         """
@@ -149,7 +157,10 @@ class MermaidInterpreter(BaseInterpreter):
                 if isinstance(_raw_text, mistletoe.span_token.RawText):
                     file_content = _raw_text.content
             try:
-                img_io, url = await render_mermaid(file_content.replace("```mermaid", "").replace("```", ""))
+                img_io, url = await render_mermaid(
+                    diagram=file_content.replace("```mermaid", "").replace("```", ""),
+                    session=self.session
+                )
                 message = f"[edit in mermaid.live]({url})"
             except Exception as e:
                 logger.warn(f"Mermaid render error: {e}")

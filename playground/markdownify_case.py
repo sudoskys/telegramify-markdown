@@ -99,7 +99,7 @@ Text
 print("Hello, World!")
 ```
 This is `inline code`
-1. First ordered list item
+1. **First ordered list item**
 2. Another item
     - Unordered sub-list.
     - Another item.
