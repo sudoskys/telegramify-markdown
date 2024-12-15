@@ -238,7 +238,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     ) -> Iterable[str]:
         token_origin = str(token.leader).strip()
         if token_origin.endswith("."):
-            token.leader = formatting.escape_markdown(token.leader) + " "
+            if not token.leader.endswith(" "):
+                token.leader += " "
+            token.leader = formatting.escape_markdown(token.leader)
         else:
             token.leader = formatting.escape_markdown("⦁")
         return super().render_list_item(token, max_line_length)
