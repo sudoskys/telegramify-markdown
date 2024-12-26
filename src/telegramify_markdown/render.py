@@ -63,10 +63,25 @@ def escape_markdown(content: str, unescape_html: bool = True) -> str:
     # Unescape HTML entities if specified
     if unescape_html:
         content = html.unescape(content)
-    # First pass to escape all markdown special characters
-    escaped_content = re.sub(r"([_*\[\]()~`>\#\+\-=|{}\.!\\])", r"\\\1", content)
-    # Second pass to remove double escaping
+    # replace links with placeholders
+    links = []
+
+    def save_link(match):
+        links.append(match.group(0))
+        return f"__LINK_PLACEHOLDER_{len(links) - 1}__"
+
+    # First save links and replace them with placeholders
+    content_with_placeholders = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', save_link, content)
+    # Second  pass to escape all markdown special characters
+    escaped_content = re.sub(r"([_*\[\]()~`>\#\+\-=|{}\.!\\])", r"\\\1", content_with_placeholders)
+
+    # Final pass to remove double escaping
     final_content = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|{}\.!\\])", r"\\\1", escaped_content)
+
+    # restore links
+    for i, link in enumerate(links):
+        final_content = final_content.replace(f"__LINK_PLACEHOLDER_{i}__", link)
+
     return final_content
 
 
