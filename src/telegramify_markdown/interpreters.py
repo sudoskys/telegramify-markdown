@@ -6,7 +6,7 @@ import mistletoe
 from telegramify_markdown.logger import logger
 from telegramify_markdown.mermaid import render_mermaid
 from telegramify_markdown.mime import get_filename
-from telegramify_markdown.type import TaskType, File, Text, Photo, SentType
+from telegramify_markdown.type import TaskType, File, Text, Photo, SentType, ContentTrace
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -67,11 +67,30 @@ class BaseInterpreter(object):
                 if isinstance(_escaped_code, mistletoe.block_token.CodeFence):
                     lang = _escaped_code.language
                 file_name = get_filename(line=render_block_func(token1_l), language=lang)
-                return [File(file_name=file_name, file_data=file_content.encode(), caption="")]
+                return [
+                    File(
+                        file_name=file_name,
+                        file_data=file_content.encode(),
+                        caption="",
+                        content_trace=ContentTrace(source_type=self.name)
+                    )
+                ]
             # 如果超过最大字数限制
-            return [File(file_name="letter.txt", file_data=render_block_func(token2_l).encode(), caption="")]
+            return [
+                File(
+                    file_name="letter.txt",
+                    file_data=render_block_func(token2_l).encode(),
+                    caption="",
+                    content_trace=ContentTrace(source_type=self.name)
+                )
+            ]
         # 没有超过最大字数限制
-        return [Text(content=render_block_func(token1_l))]
+        return [
+            Text(
+                content=render_block_func(token1_l),
+                content_trace=ContentTrace(source_type=self.name)
+            )
+        ]
 
 
 class MermaidInterpreter(BaseInterpreter):
@@ -168,7 +187,8 @@ class MermaidInterpreter(BaseInterpreter):
                     File(
                         file_name="invalid_mermaid.txt",
                         file_data=render_block_func(unescape_tokens).encode(),
-                        caption=render_lines_func("invalid_mermaid")
+                        caption=render_lines_func("invalid_mermaid"),
+                        content_trace=ContentTrace(source_type=self.name)
                     )
                 ]
             else:
@@ -176,9 +196,15 @@ class MermaidInterpreter(BaseInterpreter):
                     Photo(
                         file_name="mermaid.png",
                         file_data=img_io.getvalue(),
-                        caption=render_lines_func(message)
+                        caption=render_lines_func(message),
+                        content_trace=ContentTrace(source_type=self.name)
                     )
                 ]
         return [
-            File(file_name="mermaid_code.txt", file_data=render_block_func(unescape_tokens).encode(), caption="")
+            File(
+                file_name="mermaid_code.txt",
+                file_data=render_block_func(unescape_tokens).encode(),
+                caption="",
+                content_trace=ContentTrace(source_type=self.name)
+            )
         ]

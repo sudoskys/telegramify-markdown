@@ -14,6 +14,18 @@ class ContentTypes(Enum):
     PHOTO = "photo"
 
 
+@dataclasses.dataclass
+class ContentTrace(object):
+    """
+    The content trace.
+
+    - content: str
+    - content_type: ContentTypes
+    """
+    extra: dict = {}
+    source_type: str
+
+
 class RenderedContent(object, metaclass=ABCMeta):
     """
     The rendered content.
@@ -21,12 +33,14 @@ class RenderedContent(object, metaclass=ABCMeta):
     - content: str
     - content_type: ContentTypes
     """
+    content_trace: ContentTrace
     content_type: ContentTypes
 
 
 @dataclasses.dataclass
 class Text(RenderedContent):
     content: str
+    content_trace: ContentTrace
     content_type: ContentTypes = ContentTypes.TEXT
 
 
@@ -38,6 +52,7 @@ class File(RenderedContent):
     caption: str = ""
     """Please use render_lines_func to render the content."""
 
+    content_trace: ContentTrace
     content_type: ContentTypes = ContentTypes.FILE
 
 
@@ -48,5 +63,5 @@ class Photo(RenderedContent):
 
     caption: str = ""
     """Please use render_lines_func to render the content."""
-
+    content_trace: ContentTrace
     content_type: ContentTypes = ContentTypes.PHOTO
