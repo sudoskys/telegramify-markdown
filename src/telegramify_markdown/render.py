@@ -10,101 +10,6 @@ from telebot import formatting
 from .customize import markdown_symbol, strict_markdown, cite_expandable
 
 
-class TexBlock(block_token.BlockToken):
-    """
-    Block token for TeX code blocks enclosed with `\[ ... \]`.
-
-    Attributes:
-        indentation (str): Leading spaces or indentation.
-        content (str): The TeX code content between `\[ ... \]`.
-    """
-    repr_attributes = block_token.BlockToken.repr_attributes + ("indentation", "content")
-    # 正则匹配 `\[...` 和 `\]`
-    start_pattern = re.compile(r"( {0,3})(\\\[)(.*)")  # 匹配起始的 \[
-    end_pattern = re.compile(r"(.*?)(\\\])\s*$")  # 匹配结束的 \]
-
-    def __init__(self, match):
-        lines, open_info = match
-        self.content = "\n".join(lines)  # 公式块内容
-        self.delimiter = "```"  # 分隔符
-        self.indentation = open_info or ""  # 缩进
-
-    @classmethod
-    def start(cls, line):
-        """
-        检查是否是一个 TeX 块的起始（从 line 开始）:
-        - 支持前导空白
-        - 起始标志为 `\[`
-        """
-        match = cls.start_pattern.match(line)
-        return bool(match)
-
-    @classmethod
-    def read(cls, lines):
-        """
-        读取一个完整的 TeX 块，直到匹配闭合的 `\]`。
-        多行内容的缩进会被去除。
-
-        Args:
-            lines: Line iterator.
-
-        Returns:
-            Tuple (lines, indentation):
-                - lines: 包含公式块所有内容的列表（无 `\[... \]`）。
-                - indentation: 保存首行的缩进。
-        """
-        line_buffer = []  # 收集公式块的内容
-        indentation = None
-        match = None
-        # 逐行读取，直到找到 `\]`
-        for line in lines:
-            # 起始行的匹配（如第一行 `\[`）
-            if indentation is None:
-                match = cls.start_pattern.match(line)
-                if not match:
-                    raise ValueError("Expected TexBlock start but didn't find `\\[`.")
-                indentation = match.group(1)  # 保存起始缩进
-                content_start = match.group(3).strip()  # `\[` 后的内容
-                if content_start:  # 如果起始行中有内容，将其加入
-                    line_buffer.append(content_start)
-                continue
-
-            # 检查结束行 `\]`
-            match = cls.end_pattern.match(line)
-            if match:
-                content_end = match.group(1).strip()  # `\]` 前的内容加入
-                if content_end:
-                    line_buffer.append(content_end)
-                break  # 找到闭合 `\]`，退出读取
-
-            # 中间普通内容行
-            stripped = line.lstrip(' ')  # 去掉前导空白
-            line_buffer.append(stripped)
-
-        if not match:  # 如果没有找到闭合符号
-            line_buffer = []
-        return line_buffer, indentation
-
-
-class TexInline(span_token.SpanToken):
-    """
-    Custom span token for inline TeX.
-    Matches inline LaTeX math environment enclosed in `\( ... \)`.
-
-    Attributes:
-        content (str): The content of the inline TeX code.
-        padding (str): Leading and trailing whitespace to maintain consistency within lists or nested blocks.
-    """
-    pattern = re.compile(r"(?<!\\)\\\(\s*(.+?)\s*\\\)", re.DOTALL)
-
-    def __init__(self, match):
-        self.delimiter = "`"
-        content = match.group(1)
-        self.content = content.strip().strip("\n")  # 去掉空行与空格
-        self.padding = " " if content.startswith(" ") and content.endswith(" ") else ""  # 处理前后空格
-        super().__init__(self.content)
-
-
 class Spoiler(span_token.SpanToken):
     pattern = re.compile(r"(?<!\\)(?:\\\\)*\|\|(.+?)\|\|", re.DOTALL)
 
@@ -194,34 +99,12 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
                 (
                     Spoiler,
                     TaskListItem,
-                    TexBlock,
-                    TexInline
                 ),
                 extras
             )
         )
         self.render_map["Spoiler"] = self.render_spoiler
         self.render_map["TaskListItem"] = self.render_task_list_item
-
-    def render_tex_inline(
-            self, token: TexInline
-    ) -> Iterable[Fragment]:
-        return self.embed_span(
-            Fragment(token.delimiter + token.padding),
-            token.children,
-            Fragment(token.padding + token.delimiter)
-        )
-
-    def render_tex_block(
-            self, token: TexBlock,
-            max_line_length: int
-    ) -> Iterable[str]:
-        indentation = token.indentation
-        yield indentation + token.delimiter
-        yield from self.prefix_lines(
-            token.content[:-1].split("\n"), indentation
-        )
-        yield indentation + token.delimiter
 
     def render_quote(
             self, token: block_token.Quote, max_line_length: int
