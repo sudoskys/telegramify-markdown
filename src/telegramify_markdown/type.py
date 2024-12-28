@@ -2,7 +2,7 @@ from abc import ABCMeta
 from enum import Enum
 from typing import Tuple, List, Any, Union
 
-from pydantic import dataclasses
+from pydantic import BaseModel, Field
 
 TaskType = Tuple[str, List[Tuple[Any, Any]]]
 SentType = List[Union["Text", "File", "Photo"]]
@@ -14,19 +14,18 @@ class ContentTypes(Enum):
     PHOTO = "photo"
 
 
-@dataclasses.dataclass
-class ContentTrace(object):
+class ContentTrace(BaseModel):
     """
     The content trace.
 
     - content: str
     - content_type: ContentTypes
     """
-    extra: dict = {}
     source_type: str
+    extra: dict = Field(default_factory=dict)
 
 
-class RenderedContent(object, metaclass=ABCMeta):
+class RenderedContent(BaseModel, metaclass=ABCMeta):
     """
     The rendered content.
 
@@ -37,14 +36,12 @@ class RenderedContent(object, metaclass=ABCMeta):
     content_type: ContentTypes
 
 
-@dataclasses.dataclass
 class Text(RenderedContent):
     content: str
     content_trace: ContentTrace
     content_type: ContentTypes = ContentTypes.TEXT
 
 
-@dataclasses.dataclass
 class File(RenderedContent):
     file_name: str
     file_data: bytes
@@ -56,7 +53,6 @@ class File(RenderedContent):
     content_type: ContentTypes = ContentTypes.FILE
 
 
-@dataclasses.dataclass
 class Photo(RenderedContent):
     file_name: str
     file_data: bytes
