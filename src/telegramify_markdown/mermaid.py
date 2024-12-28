@@ -9,7 +9,7 @@ from typing import Union, Tuple
 from PIL import Image
 from aiohttp import ClientSession
 
-from telegramify_markdown.logger import logger
+from loguru import logger
 
 
 @dataclasses.dataclass
