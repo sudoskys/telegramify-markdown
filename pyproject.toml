@@ -10,9 +10,10 @@ dependencies = [
     "pytelegrambotapi>=4.22.0",
     "docutils>=0.20.1",
     "Pillow>=10.4.0",
-    "pydantic>=2.10.3",
+    "pydantic>=2.6.1",
     "aiohttp>=3.10.11",
     "matplotlib>=3.9.4",
+    "loguru>=0.7.3",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
