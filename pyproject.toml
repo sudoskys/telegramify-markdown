@@ -1,6 +1,6 @@
 [project]
 name = "telegramify-markdown"
-version = "0.3.1"
+version = "0.3.2"
 description = "Makes it easy to send Markdown in Telegram MarkdownV2 style"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -10,10 +10,12 @@ dependencies = [
     "pytelegrambotapi>=4.22.0",
     "docutils>=0.20.1",
     "Pillow>=10.4.0",
-    "pydantic>=2.10.3",
+    "pydantic>=2.6.1",
     "aiohttp>=3.10.11",
+    "matplotlib>=3.9.4",
+    "loguru>=0.7.3",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "README.md"
 license = { text = "MIT" }
 

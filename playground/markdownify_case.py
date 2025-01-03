@@ -112,10 +112,13 @@ print("```")
 emoji_md = r"""
 ![👍](tg://emoji?id=5368324170671202286)
 """
+url_exp= r"""
+[Test](https://test.com)
+"""
 
 # export Markdown to Telegram MarkdownV2 style.
 converted = telegramify_markdown.markdownify(
-    md,
+    url_exp,
     max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
     normalize_whitespace=False,
     latex_escape=True

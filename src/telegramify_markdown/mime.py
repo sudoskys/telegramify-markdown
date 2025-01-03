@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from telegramify_markdown.logger import logger
+from loguru import logger
 
 default_language_to_ext = {
     "python": "py",
