@@ -1,23 +1,29 @@
 [project]
 name = "telegramify-markdown"
-version = "0.3.2"
+version = "0.3.3"
 description = "Makes it easy to send Markdown in Telegram MarkdownV2 style"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
     "mistletoe==1.4.0",
-    "pytelegrambotapi>=4.22.0",
-    "docutils>=0.20.1",
-    "Pillow>=10.4.0",
-    "pydantic>=2.6.1",
-    "aiohttp>=3.10.11",
-    "matplotlib>=3.9.4",
     "loguru>=0.7.3",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
 license = { text = "MIT" }
+
+[project.optional-dependencies]
+mermaid = [
+    "Pillow>=10.4.0",
+    "aiohttp>=3.10.11",
+]
+
+[dependency-groups]
+dev = [
+    "pytelegrambotapi>=4.22.0",
+    "python-dotenv>=1.0.1",
+]
 
 [project.urls]
 repository = "https://github.com/sudoskys/telegramify-markdown"
@@ -30,11 +36,6 @@ build-backend = "pdm.backend"
 [tool.pdm]
 distribution = true
 
-[tool.pdm.dev-dependencies]
-dev = [
-    "loguru>=0.7.2",
-    "python-dotenv>=1.0.1",
-]
 
 [tool.pdm.scripts]
 test = "python -m unittest discover -s ./tests -p *_test.py"

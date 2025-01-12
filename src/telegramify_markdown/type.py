@@ -1,8 +1,6 @@
-from abc import ABCMeta
+import dataclasses
 from enum import Enum
 from typing import Tuple, List, Any, Union
-
-from pydantic import BaseModel, Field
 
 TaskType = Tuple[str, List[Tuple[Any, Any]]]
 SentType = List[Union["Text", "File", "Photo"]]
@@ -14,50 +12,37 @@ class ContentTypes(Enum):
     PHOTO = "photo"
 
 
-class ContentTrace(BaseModel):
-    """
-    The content trace.
-
-    - content: str
-    - content_type: ContentTypes
-    """
+@dataclasses.dataclass
+class ContentTrace:
     source_type: str
-    extra: dict = Field(default_factory=dict)
+    extra: dict = dataclasses.field(default_factory=dict, kw_only=True)
 
 
-class RenderedContent(BaseModel, metaclass=ABCMeta):
-    """
-    The rendered content.
 
-    - content: str
-    - content_type: ContentTypes
-    """
-    content_trace: ContentTrace
-    content_type: ContentTypes
-
-
-class Text(RenderedContent):
+@dataclasses.dataclass
+class Text:
     content: str
     content_trace: ContentTrace
     content_type: ContentTypes = ContentTypes.TEXT
 
 
-class File(RenderedContent):
+@dataclasses.dataclass
+class File:
     file_name: str
     file_data: bytes
 
-    caption: str = ""
     """Please use render_lines_func to render the content."""
-
     content_trace: ContentTrace
+    caption: str = ""
     content_type: ContentTypes = ContentTypes.FILE
 
 
-class Photo(RenderedContent):
+@dataclasses.dataclass
+class Photo:
     file_name: str
     file_data: bytes
 
-    caption: str = ""
     """Please use render_lines_func to render the content."""
     content_trace: ContentTrace
+    caption: str = ""
     content_type: ContentTypes = ContentTypes.PHOTO

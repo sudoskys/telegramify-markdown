@@ -2,10 +2,10 @@ import html
 import re
 from itertools import chain, tee
 from typing import Iterable
+from telegramify_markdown import markdown
 
 from mistletoe import span_token, block_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
-from telebot import formatting
 
 from .customize import markdown_symbol, strict_markdown, cite_expandable
 
@@ -157,7 +157,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             line += " " + text
         if token.closing_sequence:
             line += " " + token.closing_sequence
-        return [formatting.mbold(line, escape=False)]
+        return [markdown.bold(line)]
 
     def render_fenced_code_block(
             self, token: block_token.BlockCode, max_line_length: int
@@ -186,14 +186,14 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             self, token: block_token.BlockCode,
             max_line_length: int
     ) -> Iterable[str]:
-        return [formatting.mcode(token.content, escape=False)]
+        return [markdown.code(token.content)]
 
     def render_setext_heading(
             self, token: block_token.SetextHeading,
             max_line_length: int
     ) -> Iterable[str]:
         yield from self.span_to_lines(token.children, max_line_length=max_line_length)
-        yield formatting.escape_markdown("───────────────────")
+        yield markdown.escape("───────────────────")
 
     def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Fragment]:
         return super().render_emphasis(token)
@@ -240,9 +240,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         if token_origin.endswith("."):
             if not token.leader.endswith(" "):
                 token.leader += " "
-            token.leader = formatting.escape_markdown(token.leader)
+            token.leader = markdown.escape(token.leader)
         else:
-            token.leader = formatting.escape_markdown("⦁")
+            token.leader = markdown.escape("⦁")
         return super().render_list_item(token, max_line_length)
 
     def render_link_reference_definition(
@@ -250,7 +250,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     ) -> Iterable[Fragment]:
         yield from (
             Fragment(
-                markdown_symbol.link + formatting.mlink(
+                markdown_symbol.link + markdown.link(
                     content=token.title if token.title else token.label,
                     url=token.dest,
                     escape=True
@@ -280,24 +280,24 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
                 )
             else:
                 yield Fragment(
-                    formatting.mlink(url=target, content=title, escape=True)
+                    markdown.link(href=target, body=title)
                 )
         elif token.dest_type == "full":
             # "[" description "][" label "]"
             yield from (
-                Fragment(formatting.escape_markdown("[")),
+                Fragment(markdown.escape("[")),
                 Fragment(token.label, wordwrap=True),
-                Fragment(formatting.escape_markdown("]")),
+                Fragment(markdown.escape("]")),
             )
         elif token.dest_type == "collapsed":
             # "[" description "][]"
-            yield Fragment(formatting.escape_markdown("[]")),
+            yield Fragment(markdown.escape("[]")),
         else:
             # "[" description "]"
             pass
 
     def render_auto_link(self, token: span_token.AutoLink) -> Iterable[Fragment]:
-        yield Fragment(formatting.escape_markdown("<") + token.children[0].content + formatting.escape_markdown(">"))
+        yield Fragment(markdown.escape("<") + token.children[0].content + markdown.escape(">"))
 
     def render_escape_sequence(
             self, token: span_token.EscapeSequence
@@ -311,4 +311,4 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     ) -> Iterable[str]:
         # note: column widths are not preserved; they are automatically adjusted to fit the contents.
         fs = super().render_table(token, max_line_length)
-        return [formatting.mcode("\n".join(fs))]
+        return [markdown.code(markdown.escape("\n".join(fs)))]
