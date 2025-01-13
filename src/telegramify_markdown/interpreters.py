@@ -2,14 +2,17 @@ from typing import List, Any, Callable
 from typing import TYPE_CHECKING
 
 import mistletoe
-
 from loguru import logger
+
 from telegramify_markdown.mermaid import render_mermaid
 from telegramify_markdown.mime import get_filename
 from telegramify_markdown.type import TaskType, File, Text, Photo, SentType, ContentTrace
 
 if TYPE_CHECKING:
-    from aiohttp import ClientSession
+    try:
+        from aiohttp import ClientSession
+    except ImportError:
+        ClientSession = None
 
 
 class BaseInterpreter(object):
@@ -47,7 +50,7 @@ class BaseInterpreter(object):
         """
         task_type, token_pairs = task
         if task_type != "base":
-            logger.warn("Invalid task type for BaseInterpreter.")
+            logger.warning("Invalid task type for BaseInterpreter.")
         token1_l = list(__token1 for __token1, __token2 in token_pairs)
         token2_l = list(__token2 for __token1, __token2 in token_pairs)
         # 处理超过最大字数限制的情况
@@ -182,7 +185,7 @@ class MermaidInterpreter(BaseInterpreter):
                 )
                 message = f"[edit in mermaid.live]({url})"
             except Exception as e:
-                logger.warn(f"Mermaid render error: {e}")
+                logger.warning(f"Mermaid render error: {e}")
                 return [
                     File(
                         file_name="invalid_mermaid.txt",
