@@ -99,8 +99,14 @@ class BaseInterpreter(object):
 class MermaidInterpreter(BaseInterpreter):
     name = "mermaid"
     session = None
+    support = support_mermaid()
 
     def __init__(self, session: "ClientSession" = None):
+        if not self.support:
+            logger.error(
+                "Mermaid is not supported because the required libraries are not installed. "
+                "Run `pip install telegramify-markdown[mermaid]` or remove MermaidInterpreter"
+            )
         self.session = session
 
     async def merge(self, tasks: List[TaskType]) -> List[TaskType]:
@@ -121,8 +127,8 @@ class MermaidInterpreter(BaseInterpreter):
         # 只处理 base 块
         if task_type != "base":
             return [task]
-        if not support_mermaid():
-            logger.error("Mermaid is not supported because the required libraries are not installed.")
+        # Do not produce new tasks if Mermaid is not supported
+        if not self.support:
             return [task]
         # 用于存放生成的新任务
         tasks = []
