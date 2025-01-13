@@ -38,7 +38,8 @@ or, if you use `pdm`:
 ```shell
 pdm add telegramify-markdown
 pdm add telegramify-markdown -G mermaid
-# -G -> https://pdm-project.org/en/latest/reference/pep621/#optional-dependencies
+# -G mermaid -G tests 
+# -> https://pdm-project.org/en/latest/reference/pep621/#optional-dependencies
 ```
 
 ### 🤔 What you want to do?
@@ -53,9 +54,10 @@ We have two main functions: `markdownify` and `telegramify`.
 
 `markdownify`: Just converts raw Markdown text to Telegram's MarkdownV2 format.
 
-`telegramify`: Spilt long text into multiple chunks, convert format and use Interpreter to render code block to File, Image etc.
+`telegramify`: Spilt long text into multiple chunks, convert format and use Interpreter to render code block to File,
+Image etc.
 
->`Interpreter` can be easily customized to inspect the rendering process in `telegramify`.
+> `Interpreter` can be easily customized to inspect the rendering process in `telegramify`.
 
 ## 👀 Use case
 
@@ -150,7 +152,8 @@ print(converted)
 
 ### `telegramify`
 
-please check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+please
+check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
 
 ## 🔨 Supported Input
 
