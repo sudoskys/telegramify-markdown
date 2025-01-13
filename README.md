@@ -30,12 +30,15 @@ To install the library, run:
 
 ```bash
 pip install telegramify-markdown
+pip install telegramify-markdown[mermaid]
 ```
 
 or, if you use `pdm`:
 
 ```shell
 pdm add telegramify-markdown
+pdm add telegramify-markdown -G mermaid
+# -G -> https://pdm-project.org/en/latest/reference/pep621/#optional-dependencies
 ```
 
 ### 🤔 What you want to do?
