@@ -10,8 +10,7 @@ from . import customize
 from .interpreters import Text, File, Photo, BaseInterpreter, MermaidInterpreter
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
-from loguru import logger
-from .mermaid import render_mermaid
+from .logger import logger
 from .mime import get_filename
 from .render import TelegramMarkdownRenderer, escape_markdown
 from .type import Text, File, Photo, ContentTypes
