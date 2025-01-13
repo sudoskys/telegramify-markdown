@@ -2,14 +2,17 @@ from typing import List, Any, Callable
 from typing import TYPE_CHECKING
 
 import mistletoe
-
 from loguru import logger
-from telegramify_markdown.mermaid import render_mermaid
+
+from telegramify_markdown.mermaid import render_mermaid, support_mermaid
 from telegramify_markdown.mime import get_filename
 from telegramify_markdown.type import TaskType, File, Text, Photo, SentType, ContentTrace
 
 if TYPE_CHECKING:
-    from aiohttp import ClientSession
+    try:
+        from aiohttp import ClientSession
+    except ImportError:
+        ClientSession = None
 
 
 class BaseInterpreter(object):
@@ -47,7 +50,7 @@ class BaseInterpreter(object):
         """
         task_type, token_pairs = task
         if task_type != "base":
-            logger.warn("Invalid task type for BaseInterpreter.")
+            logger.warning("Invalid task type for BaseInterpreter.")
         token1_l = list(__token1 for __token1, __token2 in token_pairs)
         token2_l = list(__token2 for __token1, __token2 in token_pairs)
         # 处理超过最大字数限制的情况
@@ -96,8 +99,14 @@ class BaseInterpreter(object):
 class MermaidInterpreter(BaseInterpreter):
     name = "mermaid"
     session = None
+    support = support_mermaid()
 
     def __init__(self, session: "ClientSession" = None):
+        if not self.support:
+            logger.error(
+                "Mermaid is not supported because the required libraries are not installed. "
+                "Run `pip install telegramify-markdown[mermaid]` or remove MermaidInterpreter"
+            )
         self.session = session
 
     async def merge(self, tasks: List[TaskType]) -> List[TaskType]:
@@ -117,6 +126,9 @@ class MermaidInterpreter(BaseInterpreter):
         task_type, token_pairs = task
         # 只处理 base 块
         if task_type != "base":
+            return [task]
+        # Do not produce new tasks if Mermaid is not supported
+        if not self.support:
             return [task]
         # 用于存放生成的新任务
         tasks = []
@@ -182,7 +194,7 @@ class MermaidInterpreter(BaseInterpreter):
                 )
                 message = f"[edit in mermaid.live]({url})"
             except Exception as e:
-                logger.warn(f"Mermaid render error: {e}")
+                logger.warning(f"Mermaid render error: {e}")
                 return [
                     File(
                         file_name="invalid_mermaid.txt",

@@ -4,12 +4,16 @@ import dataclasses
 import json
 import zlib
 from io import BytesIO
+from typing import TYPE_CHECKING
 from typing import Union, Tuple
 
-from PIL import Image
-from aiohttp import ClientSession
+from telegramify_markdown.logger import logger
 
-from loguru import logger
+if TYPE_CHECKING:
+    try:
+        from aiohttp import ClientSession
+    except ImportError:
+        ClientSession = None
 
 
 @dataclasses.dataclass
@@ -19,7 +23,7 @@ class MermaidConfig:
 
 async def download_image(
         url: str,
-        session: ClientSession = None,
+        session: "ClientSession" = None,
 ) -> BytesIO:
     """
     Download the image from the URL asynchronously.
@@ -37,7 +41,11 @@ async def download_image(
     needs_closing = False
 
     if session is None:
-        session = ClientSession()
+        try:
+            from aiohttp import ClientSession
+            session = ClientSession()
+        except ImportError as e:
+            raise ImportError("aiohttp and Pillow libraries are required but not installed.") from e
         needs_closing = True
 
     try:
@@ -62,9 +70,12 @@ def is_image(data: BytesIO) -> bool:
     """
     try:
         # 使用 Pillow 验证是否是合法图片
+        from PIL import Image
         with Image.open(data) as img:
             img.verify()  # 验证图片
         return True
+    except ImportError:
+        raise ImportError("Pillow library is required but not installed.")
     except Exception as e:
         logger.debug(f"telegramify_markdown: Image verification failed: {e}")
         return False
@@ -150,7 +161,7 @@ def get_mermaid_ink_url(graph_markdown: str) -> str:
 
 async def render_mermaid(
         diagram: str,
-        session: ClientSession = None,
+        session: "ClientSession" = None,
 ) -> Tuple[BytesIO, str]:
     # render picture
     img_url = get_mermaid_ink_url(diagram)
@@ -164,6 +175,15 @@ async def render_mermaid(
         raise ValueError("The URL does not return an image.")
     img_data.seek(0)  # Reset the file pointer to the beginning
     return img_data, caption
+
+
+def support_mermaid():
+    try:
+        from PIL import Image
+        from aiohttp import ClientSession
+    except ImportError:
+        return False
+    return True
 
 
 if __name__ == '__main__':
@@ -181,7 +201,11 @@ if __name__ == '__main__':
         t1 = await render_mermaid(mermaid_md)
         print(t1)
         # 展示图片
-        Image.open(t1[0]).show()
+        try:
+            from PIL import Image
+            Image.open(t1[0]).show()
+        except ImportError as e:
+            print("Pillow library is required but not installed.")
 
 
     asyncio.run(run())
