@@ -18,7 +18,6 @@ class ContentTrace:
     extra: dict = dataclasses.field(default_factory=dict, kw_only=True)
 
 
-
 @dataclasses.dataclass
 class Text:
     content: str
@@ -31,9 +30,9 @@ class File:
     file_name: str
     file_data: bytes
 
-    """Please use render_lines_func to render the content."""
     content_trace: ContentTrace
     caption: str = ""
+    """Please use render_lines_func to render the content."""
     content_type: ContentTypes = ContentTypes.FILE
 
 
@@ -42,7 +41,7 @@ class Photo:
     file_name: str
     file_data: bytes
 
-    """Please use render_lines_func to render the content."""
     content_trace: ContentTrace
     caption: str = ""
+    """Please use render_lines_func to render the content."""
     content_type: ContentTypes = ContentTypes.PHOTO
