@@ -177,6 +177,15 @@ async def render_mermaid(
     return img_data, caption
 
 
+def support_mermaid():
+    try:
+        from PIL import Image
+        from aiohttp import ClientSession
+    except ImportError:
+        return False
+    return True
+
+
 if __name__ == '__main__':
     mermaid_md = """
     sequenceDiagram

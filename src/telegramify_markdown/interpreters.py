@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import mistletoe
 from loguru import logger
 
-from telegramify_markdown.mermaid import render_mermaid
+from telegramify_markdown.mermaid import render_mermaid, support_mermaid
 from telegramify_markdown.mime import get_filename
 from telegramify_markdown.type import TaskType, File, Text, Photo, SentType, ContentTrace
 
@@ -120,6 +120,9 @@ class MermaidInterpreter(BaseInterpreter):
         task_type, token_pairs = task
         # 只处理 base 块
         if task_type != "base":
+            return [task]
+        if not support_mermaid():
+            logger.error("Mermaid is not supported because the required libraries are not installed.")
             return [task]
         # 用于存放生成的新任务
         tasks = []

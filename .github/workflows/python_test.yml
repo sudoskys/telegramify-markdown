@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pdm install --dev --no-lock --all-extras
+          pdm install --dev --no-lock -G mermaid
       - name: Run Tests
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
