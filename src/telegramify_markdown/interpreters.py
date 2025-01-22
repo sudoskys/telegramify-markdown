@@ -2,8 +2,7 @@ from typing import List, Any, Callable
 from typing import TYPE_CHECKING
 
 import mistletoe
-from loguru import logger
-
+from telegramify_markdown.logger import logger
 from telegramify_markdown.mermaid import render_mermaid, support_mermaid
 from telegramify_markdown.mime import get_filename
 from telegramify_markdown.type import TaskType, File, Text, Photo, SentType, ContentTrace
