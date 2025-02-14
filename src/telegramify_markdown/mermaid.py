@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass
 class MermaidConfig:
-    theme: str = "neutral"
+    theme: str = "default"
 
 
 async def download_image(
@@ -136,7 +136,7 @@ def b64_mermaid_url(diagram: str) -> str:
     :return: Link
     """
     diagram_encoded = safe_base64_encode(diagram.encode('utf8')).decode('ascii')
-    return f'https://mermaid.ink/img/{diagram_encoded}?theme=neutral&width=500&scale=2'
+    return f'https://mermaid.ink/img/{diagram_encoded}?theme=default&width=500&scale=2'
 
 
 def get_mermaid_live_url(graph_markdown: str) -> str:
@@ -156,7 +156,7 @@ def get_mermaid_ink_url(graph_markdown: str) -> str:
     :param graph_markdown: The Mermaid graph Markdown
     :return: Link
     """
-    return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?theme=neutral&width=500&scale=2&type=webp'
+    return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?theme=default&width=500&scale=2&type=webp'
 
 
 async def render_mermaid(
