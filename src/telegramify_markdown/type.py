@@ -15,7 +15,7 @@ class ContentTypes(Enum):
 @dataclasses.dataclass
 class ContentTrace:
     source_type: str
-    extra: dict = dataclasses.field(default_factory=dict, kw_only=True)
+    extra: dict = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
