@@ -17,6 +17,10 @@ class ContentTrace:
     source_type: str
     extra: dict = dataclasses.field(default_factory=dict)
 
+    def __init__(self, source_type: str, *, extra: dict = None):
+        self.source_type = source_type
+        self.extra = extra if extra is not None else {}
+
 
 @dataclasses.dataclass
 class Text:
