@@ -50,12 +50,16 @@ pdm add telegramify-markdown -G mermaid
 - If you are developing an *LLM application* or need to send potentially **super-long text**, please
   check:[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
 
-We have two main functions: `markdownify` and `telegramify`.
+- If you want to write TelegramV2 format text directly in bot, please check:[playground/standardize_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/standardize_case.py)
 
-`markdownify`: Just converts raw Markdown text to Telegram's MarkdownV2 format.
+We have three main functions: `markdownify`, `telegramify`, and `standardize`.
+
+`markdownify`: Just converts raw Markdown text to Telegram's MarkdownV2 format, used for LLM like ChatGPT.
 
 `telegramify`: Spilt long text into multiple chunks, convert format and use Interpreter to render code block to File,
-Image etc.
+Image etc, used for LLM bot developers who want do more with Telegram's MarkdownV2 format.
+
+`standardize`: Convert unstandardized Telegram's MarkdownV2 format to standardized format(convenient for bot developers write something directly in bot).
 
 > `Interpreter` can be easily customized to inspect the rendering process in `telegramify`.
 
@@ -154,6 +158,47 @@ print(converted)
 
 please
 check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+
+### `standardize`
+
+```python
+import telegramify_markdown
+from telegramify_markdown.customize import get_runtime_config
+
+# Customize symbols (optional)
+markdown_symbol = get_runtime_config().markdown_symbol
+markdown_symbol.head_level_1 = "📌"  # Customize the first level title symbol
+markdown_symbol.link = "🔗"  # Customize the link symbol
+
+# Telegram MarkdownV2 format text
+telegram_v2 = r"""
+# Title
+*bold \*text*
+_italic \*text_
+__underline__
+~strikethrough~
+||spoiler||
+*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
+
+```python
+pre-formatted fixed-width code block written in the Python programming language
+```
+
+>Block quotation started
+>Block quotation continued
+>The last line of the block quotation
+"""
+
+# Standardize processing
+converted = telegramify_markdown.standardize(telegram_v2)
+
+# Send to Telegram
+bot.send_message(
+    chat_id,
+    converted,
+    parse_mode="MarkdownV2"  # Must use MarkdownV2 parsing mode
+)
+```
 
 ## 🔨 Supported Input
 
