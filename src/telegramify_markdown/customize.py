@@ -1,3 +1,15 @@
+def singleton(cls):
+    """Singleton pattern decorator"""
+    instances = {}
+    
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    
+    return get_instance
+
+
 class Symbol:
     def __init__(self):
         self.head_level_1: str = "\N{PUSHPIN}"                   # 📌
@@ -10,21 +22,13 @@ class Symbol:
         self.task_uncompleted: str = "\N{BALLOT BOX WITH CHECK}" # ☑️
 
 
-class CustomConfig:
-    _instance = None
-    _markdown_symbol: Symbol
-    _cite_expandable: bool
-    _strict_markdown: bool
-    _unescape_html: bool
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._markdown_symbol = Symbol()
-            cls._instance._cite_expandable = True
-            cls._instance._strict_markdown = True
-            cls._instance._unescape_html = False
-        return cls._instance
+@singleton
+class RenderConfig:
+    def __init__(self):
+        self._markdown_symbol = Symbol()
+        self._cite_expandable = True
+        self._strict_markdown = True
+        self._unescape_html = False
 
     @property
     def markdown_symbol(self) -> Symbol:
@@ -56,24 +60,24 @@ class CustomConfig:
 
 
 # Global accessor function for accessing the CustomConfig singleton
-def get_config() -> CustomConfig:
-    return CustomConfig()
+def get_runtime_config() -> RenderConfig:
+    return RenderConfig()
 
 
 # NOTE: Deprecated global variables included below for backward compatibility.
 # These should be removed in the next major version bump following the deprecation warning period.
-import inspect
-import warnings
+import inspect  # noqa: E402
+import warnings  # noqa: E402
 warnings.simplefilter("default", DeprecationWarning)
 
 warnings.warn_explicit("markdown_symbol is deprecated, and will be removed in a future release. Use get_config().markdown_symbol instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
-markdown_symbol = get_config().markdown_symbol
+markdown_symbol = get_runtime_config().markdown_symbol
 
 warnings.warn_explicit("cite_expandable is deprecated, and will be removed in a future release. Use get_config().cite_expandable instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
-cite_expandable = get_config().cite_expandable
+cite_expandable = get_runtime_config().cite_expandable
 
 warnings.warn_explicit("strict_markdown is deprecated, and will be removed in a future release. Use get_config().strict_markdown instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
-strict_markdown = get_config().strict_markdown
+strict_markdown = get_runtime_config().strict_markdown
 
 warnings.warn_explicit("unescape_html is deprecated, and will be removed in a future release. Use get_config().unescape_html instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
-unescape_html = get_config().unescape_html
+unescape_html = get_runtime_config().unescape_html

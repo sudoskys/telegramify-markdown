@@ -5,9 +5,8 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown import markdownify
 
-customize = telegramify_markdown.customize.get_config() # Get the global Customize singleton instance
+customize = telegramify_markdown.customize.get_runtime_config() # Get the global Customize singleton instance
 
 # Customize the markdownify
 customize.strict_markdown = False  # treat `__` as underline instead of bold

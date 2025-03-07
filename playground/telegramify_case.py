@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown.customize import get_config
+from telegramify_markdown.customize import get_runtime_config
 from telegramify_markdown.interpreters import BaseInterpreter, MermaidInterpreter
 from telegramify_markdown.type import ContentTypes
 
@@ -25,8 +25,8 @@ chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
 bot = TeleBot(telegram_bot_token)
 
 # Customizing global rendering options
-get_config().markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
-get_config().markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
+get_runtime_config().markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
+get_runtime_config().markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding="utf-8")
 
 

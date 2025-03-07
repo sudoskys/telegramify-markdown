@@ -1,9 +1,9 @@
 import re
 
 import telegramify_markdown
-from telegramify_markdown.customize import get_config
+from telegramify_markdown.customize import get_runtime_config
 
-markdown_symbol = get_config().markdown_symbol
+markdown_symbol = get_runtime_config().markdown_symbol
 
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol

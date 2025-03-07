@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 
 import telegramify_markdown
 from server import server_t
-from telegramify_markdown import markdownify
 
 load_dotenv()
 
@@ -13,7 +12,7 @@ load_dotenv()
 class TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_markdownify(self):
         md = pathlib.Path(__file__).parent.joinpath("exp1.md").read_text(encoding="utf-8")
-        converted = markdownify(md)
+        converted = telegramify_markdown.markdownify(md)
         self.assertEqual(server_t(converted), True)
 
     async def test_telegramify(self):
@@ -28,6 +27,11 @@ class TestCase(unittest.IsolatedAsyncioTestCase):
             ]
         )
         self.assertEqual(isinstance(rendered, list), True)
+        
+    def test_standardize(self):
+        md = pathlib.Path(__file__).parent.joinpath("exp1.md").read_text(encoding="utf-8")
+        converted = telegramify_markdown.standardize(md)
+        self.assertEqual(server_t(converted), True)
 
 
 if __name__ == '__main__':
