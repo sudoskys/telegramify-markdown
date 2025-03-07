@@ -7,11 +7,13 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown.customize import markdown_symbol
+from telegramify_markdown.customize import get_config
 from telegramify_markdown.type import ContentTypes
 
+markdown_symbol = get_config().markdown_symbol
+
 tips = """
-telegramify_markdown.telegramify 
+telegramify_markdown.telegramify
 
 The stability of telegramify_markdown.telegramify is unproven, please keep good log records.
 

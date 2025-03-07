@@ -5,9 +5,14 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
+from telegramify_markdown import markdownify
+
+customize = telegramify_markdown.customize.get_config() # Get the global Customize singleton instance
 
 # Customize the markdownify
-telegramify_markdown.customize.strict_markdown = False  # we need send underline text
+customize.strict_markdown = False  # treat `__` as underline instead of bold
+print("strict_markdown:", customize.strict_markdown)
+
 # Test html tags
 html_t = telegramify_markdown.markdownify(
     "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;",
@@ -124,7 +129,7 @@ converted = telegramify_markdown.markdownify(
     latex_escape=True
 )
 print(converted)
-# export Markdown to Telegram MarkdownV2 style.
+
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
 chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
@@ -132,5 +137,5 @@ bot = TeleBot(telegram_bot_token)
 bot.send_message(
     chat_id,
     converted,
-    parse_mode="MarkdownV2"  # IMPORTANT: Need Send in MarkdownV2 Mode.
+    parse_mode="MarkdownV2" # IMPORTANT: Must be sent with "MarkdownV2" parse mode
 )
