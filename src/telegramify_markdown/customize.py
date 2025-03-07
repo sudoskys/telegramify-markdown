@@ -43,14 +43,6 @@ class RenderConfig:
         self._cite_expandable = value
 
     @property
-    def strict_markdown(self) -> bool:
-        return self._strict_markdown
-
-    @strict_markdown.setter
-    def strict_markdown(self, value: bool):
-        self._strict_markdown = value
-
-    @property
     def unescape_html(self) -> bool:
         return self._unescape_html
 
@@ -77,7 +69,7 @@ warnings.warn_explicit("cite_expandable is deprecated, and will be removed in a 
 cite_expandable = get_runtime_config().cite_expandable
 
 warnings.warn_explicit("strict_markdown is deprecated, and will be removed in a future release. Use get_config().strict_markdown instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
-strict_markdown = get_runtime_config().strict_markdown
+strict_markdown = True
 
 warnings.warn_explicit("unescape_html is deprecated, and will be removed in a future release. Use get_config().unescape_html instead", DeprecationWarning, filename=__file__, lineno=inspect.currentframe().f_lineno + 1)
 unescape_html = get_runtime_config().unescape_html
