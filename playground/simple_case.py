@@ -1,5 +1,3 @@
-import re
-
 import telegramify_markdown
 from telegramify_markdown.customize import get_runtime_config
 
@@ -20,7 +18,7 @@ task = """
 >1231
 
 """
-test_md = """
+test_md = r"""
 **bold text**
 ||spoiler||
 """
@@ -36,7 +34,7 @@ math = r"""
 $ f(x) = \frac{1}{x} $
 """
 
-emoji="""
+emoji = r"""
 [inline URL](http://www.example.com/)
 [inline mention of a user](tg://user?id=123456789)
 ![👍](tg://emoji?id=5368324170671202286)

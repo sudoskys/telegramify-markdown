@@ -15,6 +15,11 @@ class TestCase(unittest.IsolatedAsyncioTestCase):
         converted = telegramify_markdown.markdownify(md)
         self.assertEqual(server_t(converted), True)
 
+    def test_standardize(self):
+        md = pathlib.Path(__file__).parent.joinpath("exp1.md").read_text(encoding="utf-8")
+        converted = telegramify_markdown.standardize(md)
+        self.assertEqual(server_t(converted), True)
+
     async def test_telegramify(self):
         long_md = pathlib.Path(__file__).parent.joinpath("exp2.md").read_text(encoding="utf-8")
         rendered = await telegramify_markdown.telegramify(
@@ -27,11 +32,6 @@ class TestCase(unittest.IsolatedAsyncioTestCase):
             ]
         )
         self.assertEqual(isinstance(rendered, list), True)
-        
-    def test_standardize(self):
-        md = pathlib.Path(__file__).parent.joinpath("exp1.md").read_text(encoding="utf-8")
-        converted = telegramify_markdown.standardize(md)
-        self.assertEqual(server_t(converted), True)
 
 
 if __name__ == '__main__':

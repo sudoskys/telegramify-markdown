@@ -9,7 +9,7 @@ from telegramify_markdown.customize import get_runtime_config
 markdown_symbol = get_runtime_config().markdown_symbol
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-telegram_v2="""
+telegram_v2=r"""
 # Title
 *bold \*text*
 _italic \*text_
