@@ -1,12 +1,10 @@
 import re
 from logging import getLogger
-
-logger = getLogger(__name__)
-
 from telegramify_markdown.latex_escape.const import (
     COMBINING, CombiningType, NOT_MAP, SUBSCRIPTS, SUPERSCRIPTS, LATEX_STYLES, FRAC_MAP, LATEX_SYMBOLS
 )
 
+logger = getLogger(__name__)
 
 class LatexToUnicodeHelper:
     @staticmethod
@@ -151,11 +149,15 @@ class LatexToUnicodeHelper:
         return LATEX_SYMBOLS.get(name, name)
 
     def parse(self, latex):
-        # 解析并转换 LaTeX 字符串为 Unicode
+        # Parse and convert LaTeX string to Unicode
         result, i = [], 0
         while i < len(latex):
             if latex[i] == '\\':
                 command, i = self.parse_command(latex, i)
+                # Check if it is a mixed fraction format (a number followed directly by \frac)
+                if command == "\\frac" and result and result[-1] and result[-1][-1].isdigit():
+                    # Add a space between the number and the fraction
+                    result[-1] = result[-1] + " "
                 handled, i = self.handle_command(command, latex, i)
                 result.append(handled)
             elif latex[i] == '{':
