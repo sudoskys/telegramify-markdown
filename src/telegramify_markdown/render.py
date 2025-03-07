@@ -209,10 +209,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         yield markdown.escape("───────────────────")
 
     def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Fragment]:
-        return super().render_emphasis(token)
+        return self.embed_span(Fragment("_"), token.children)
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        # Telegram strong: *text*
         return self.embed_span(Fragment("*"), token.children)
 
     def render_strikethrough(
@@ -341,9 +340,10 @@ class TelegramMarkdownFormatter(TelegramMarkdownRenderer):
     ) -> Iterable[Fragment]:
         return self.embed_span(Fragment("~"), token.children)
 
+    def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Fragment]:
+        return self.embed_span(Fragment(token.delimiter), token.children)
+
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
-        # bold
-        if token.delimiter == "*":
-            return self.embed_span(Fragment(token.delimiter * 1), token.children)
-        # underline
-        return self.embed_span(Fragment(token.delimiter * 2), token.children)
+        if token.delimiter == "_":
+            return self.embed_span(Fragment(token.delimiter), token.children)
+        return self.embed_span(Fragment(token.delimiter), token.children)
