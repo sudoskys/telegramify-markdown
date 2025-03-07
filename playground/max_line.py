@@ -1,7 +1,7 @@
 import telegramify_markdown
-from telegramify_markdown import customize
+from telegramify_markdown.customize import get_config
 
-customize.strict_markdown = True
+get_config().strict_markdown = True
 
 md = """
 [Treating Otitis Externa in Dogs | Today's Veterinary Practice](https://todaysveterinarypractice.com/dermatology/treating-otitis-externa-in-dogs/)

@@ -78,7 +78,7 @@ def _update_text(token: Union[SpanToken, BlockToken]):
         pass
     else:
         if hasattr(token, "content"):
-            token.content = escape_markdown(token.content, unescape_html=customize.unescape_html)
+            token.content = escape_markdown(token.content, unescape_html=customize.get_config().unescape_html)
 
 
 def _update_block(token: BlockToken):

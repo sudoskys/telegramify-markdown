@@ -7,7 +7,9 @@ from telegramify_markdown import markdown
 from mistletoe import span_token, block_token
 from mistletoe.markdown_renderer import MarkdownRenderer, LinkReferenceDefinition, Fragment
 
-from .customize import markdown_symbol, strict_markdown, cite_expandable
+from .customize import get_config
+
+markdown_symbol, strict_markdown, cite_expandable = get_config().markdown_symbol, get_config().strict_markdown, get_config().cite_expandable
 
 
 class Spoiler(span_token.SpanToken):
@@ -90,9 +92,7 @@ def validate_telegram_emoji(url: str) -> bool:
         return False
     return True
 
-
 class TelegramMarkdownRenderer(MarkdownRenderer):
-
     def __init__(self, *extras, **kwargs):
         super().__init__(
             *chain(
