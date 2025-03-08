@@ -345,5 +345,5 @@ class TelegramMarkdownFormatter(TelegramMarkdownRenderer):
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
         if token.delimiter == "_":
-            return self.embed_span(Fragment(token.delimiter), token.children)
+            return self.embed_span(Fragment(token.delimiter * 2), token.children)
         return self.embed_span(Fragment(token.delimiter), token.children)
