@@ -7,11 +7,13 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown.customize import markdown_symbol
+from telegramify_markdown.customize import get_runtime_config
 from telegramify_markdown.type import ContentTypes
 
+markdown_symbol = get_runtime_config().markdown_symbol
+
 tips = """
-telegramify_markdown.telegramify 
+telegramify_markdown.telegramify
 
 The stability of telegramify_markdown.telegramify is unproven, please keep good log records.
 
@@ -25,7 +27,7 @@ bot = TeleBot(telegram_bot_token)
 
 markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
 markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding="utf-8")
+md = pathlib.Path(__file__).parent.parent.joinpath('playground').joinpath("t_longtext.md").read_text(encoding="utf-8")
 
 
 async def main():

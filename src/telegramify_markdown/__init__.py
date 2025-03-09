@@ -7,12 +7,10 @@ from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
-from .interpreters import Text, File, Photo, BaseInterpreter, MermaidInterpreter
+from .interpreters import BaseInterpreter, MermaidInterpreter
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
-from .logger import logger
-from .mime import get_filename
-from .render import TelegramMarkdownRenderer, escape_markdown
+from .render import TelegramMarkdownRenderer, escape_markdown, TelegramMarkdownFormatter
 from .type import Text, File, Photo, ContentTypes
 
 __all__ = [
@@ -78,7 +76,7 @@ def _update_text(token: Union[SpanToken, BlockToken]):
         pass
     else:
         if hasattr(token, "content"):
-            token.content = escape_markdown(token.content, unescape_html=customize.unescape_html)
+            token.content = escape_markdown(token.content, unescape_html=customize.get_runtime_config().unescape_html)
 
 
 def _update_block(token: BlockToken):
@@ -133,15 +131,15 @@ async def telegramify(
             content = escape_latex(content)
         document = mistletoe.Document(content)
         document2 = mistletoe.Document(content)
-        # 只更新第一个文档，因为我们要倒查第二个文档的内容
+        # Only update the first document, because we need to check the content of the second document
         _update_block(document)
-        # 解离 Token
+        # Disconnect the Token
         tokens = list(document.children)
         tokens2 = list(document2.children)
         if len(tokens) != len(tokens2):
             raise ValueError("Token length mismatch")
 
-        # 对内容进行分块渲染
+        # Split the content into blocks
         def is_over_max_word_count(doc_t: List[Tuple[Any, Any]]):
             doc = mistletoe.Document(lines=[])
             doc.children = [___token for ___token, ___token2 in doc_t]
@@ -160,9 +158,9 @@ async def telegramify(
         _stack = []
         _packed = []
 
-        # 步进推送
+        # Step by step push
         for _token, _token2 in zip(tokens, tokens2):
-            # 计算如果推送当前 Token 是否会超过最大字数限制
+            # Calculate if pushing the current token will exceed the maximum word count limit
             if is_over_max_word_count(_stack + [(_token, _token2)]):
                 _packed.append(_stack)
                 _stack = [(_token, _token2)]
@@ -200,6 +198,35 @@ async def telegramify(
                 ))
     return _rendered
 
+def standardize(
+        content: str,
+        *,
+        max_line_length: int = None,
+        normalize_whitespace=False,
+        latex_escape: bool = True,
+) -> str:
+    """
+    Convert Unstandardized Telegram MarkdownV2 Syntax to Standardized Telegram MarkdownV2 Syntax.
+    Used for replace the Telegram MarkdownV2 Syntax Builder.
+
+     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/standardize_case.py
+
+    :param content: The markdown content to convert.
+    :param max_line_length: The maximum length of a line.
+    :param normalize_whitespace: Whether to normalize whitespace.
+    :param latex_escape: Whether to make LaTeX content readable in Telegram.
+    :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
+    """
+    with TelegramMarkdownFormatter(
+            max_line_length=max_line_length,
+            normalize_whitespace=normalize_whitespace
+    ) as renderer:
+        if latex_escape:
+            content = escape_latex(content)
+        document = mistletoe.Document(content)
+        _update_block(document)
+        result = renderer.render(document)
+    return result
 
 def markdownify(
         content: str,
@@ -209,7 +236,7 @@ def markdownify(
         latex_escape: bool = True,
 ) -> str:
     """
-    Convert markdown str to Telegram Markdown format.
+    Convert Standardized Markdown to Standardized Telegram MarkdownV2 Syntax.
 
      **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py
 
@@ -219,7 +246,6 @@ def markdownify(
     :param latex_escape: Whether to make LaTeX content readable in Telegram.
     :return: The Telegram markdown formatted content. **Need Send in MarkdownV2 Mode.**
     """
-    _rendered = []
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
             normalize_whitespace=normalize_whitespace
