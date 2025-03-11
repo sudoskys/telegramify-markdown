@@ -180,10 +180,6 @@ __underline__
 ||spoiler||
 *bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
 
-```python
-pre-formatted fixed-width code block written in the Python programming language
-```
-
 >Block quotation started
 >Block quotation continued
 >The last line of the block quotation
