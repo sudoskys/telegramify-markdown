@@ -27,7 +27,8 @@ class TestCase(unittest.IsolatedAsyncioTestCase):
             max_word_count=4090,
             latex_escape=True,
             interpreters_use=[
-                telegramify_markdown.interpreters.BaseInterpreter(),
+                telegramify_markdown.interpreters.TextInterpreter(),
+                telegramify_markdown.interpreters.FileInterpreter(),
                 telegramify_markdown.interpreters.MermaidInterpreter(),
             ]
         )
