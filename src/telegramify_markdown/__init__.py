@@ -7,7 +7,10 @@ from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
 from mistletoe.span_token import SpanToken  # noqa
 
 from . import customize
-from .interpreters import BaseInterpreter, MermaidInterpreter
+from .interpreters import (
+    BaseInterpreter, TextInterpreter, FileInterpreter, MermaidInterpreter,
+    InterpreterChain, create_default_chain
+)
 from .latex_escape.const import LATEX_SYMBOLS, NOT_MAP, LATEX_STYLES
 from .latex_escape.helper import LatexToUnicodeHelper
 from .render import TelegramMarkdownRenderer, escape_markdown, TelegramMarkdownFormatter
@@ -19,6 +22,11 @@ __all__ = [
     "markdownify",
     "telegramify",
     "BaseInterpreter",
+    "TextInterpreter",
+    "FileInterpreter",
+    "MermaidInterpreter",
+    "InterpreterChain",
+    "create_default_chain",
     "ContentTypes",
 ]
 latex_escape_helper = LatexToUnicodeHelper()
@@ -106,7 +114,7 @@ async def telegramify(
 
     **Showcase** https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py
 
-    :param interpreters_use: The interpreters to use.
+    :param interpreters_use: The interpreters to use. Can be a list of interpreters or an InterpreterChain.
     :param content: The markdown content to convert.
     :param max_line_length: The maximum length of a line.
     :param normalize_whitespace: Whether to normalize whitespace.
@@ -117,11 +125,19 @@ async def telegramify(
     :raises Exception: Some other exceptions.
     """
     if interpreters_use is None:
-        interpreters_use = [BaseInterpreter(), MermaidInterpreter()]
-    if not interpreters_use:
+        # Use the default interpreter chain
+        interpreter_chain = create_default_chain()
+    elif isinstance(interpreters_use, InterpreterChain):
+        # If the interpreter chain is already created, use it directly
+        interpreter_chain = interpreters_use
+    elif isinstance(interpreters_use, list):
+        # If the interpreter list is already created, create a new interpreter chain
+        interpreter_chain = InterpreterChain(interpreters_use)
+    else:
         raise ValueError(
-            "No interpreters provided, at least `telegramify_markdown.interpreters.BaseInterpreter` is required."
+            "interpreters_use must be a list of interpreters or an InterpreterChain."
         )
+
     _rendered: List[Union[Text, File, Photo]] = []
     with TelegramMarkdownRenderer(
             max_line_length=max_line_length,
@@ -169,34 +185,34 @@ async def telegramify(
         if _stack:
             _packed.append(_stack)
         _task = [("base", cell) for cell in _packed]
-        # [(base, [(token1,token2),(token1,token2)]), (base, [(token1,token2),(token1,token2)])]
-        interpreters_map = {interpreter.name: interpreter for interpreter in interpreters_use}
-        if len(interpreters_map.keys()) != len(interpreters_use):
-            raise ValueError(f"Interpreter name conflict: {interpreters_use}")
-        run_interpreters = interpreters_map.values()
-        for interpreter in run_interpreters:
-            _task = await interpreter.merge(_task)
-        for interpreter in run_interpreters:
-            _new_task = []
-            for _per_task in _task:
-                _new_task.extend(
-                    await interpreter.split(_per_task)
-                )
-            _task = _new_task
 
+        # Use the responsibility chain to process the task
         for _per_task in _task:
-            task_type, token_pairs = _per_task
-            if task_type not in interpreters_map:
-                raise ValueError(f"Cannot find interpreter for task type: {task_type}")
-            interpreter = interpreters_map[task_type]
-            _rendered.extend(
-                await interpreter.render_task(
-                    task=_per_task,
+            # First, split the task
+            split_tasks = []
+            current_tasks = [_per_task]
+
+            # Let each interpreter have a chance to split the task
+            for interpreter in interpreter_chain.interpreters:
+                new_tasks = []
+                for task in current_tasks:
+                    new_tasks.extend(await interpreter.split(task))
+                current_tasks = new_tasks
+
+            split_tasks = current_tasks
+
+            # Process the split tasks
+            for task in split_tasks:
+                result = await interpreter_chain.process(
+                    task=task,
                     render_lines_func=render_lines,
                     render_block_func=render_block,
                     max_word_count=max_word_count
-                ))
+                )
+                _rendered.extend(result)
+
     return _rendered
+
 
 def standardize(
         content: str,
@@ -227,6 +243,7 @@ def standardize(
         _update_block(document)
         result = renderer.render(document)
     return result
+
 
 def markdownify(
         content: str,
