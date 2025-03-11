@@ -8,7 +8,10 @@ from telebot import TeleBot
 
 import telegramify_markdown
 from telegramify_markdown.customize import get_runtime_config
-from telegramify_markdown.interpreters import BaseInterpreter, MermaidInterpreter
+from telegramify_markdown.interpreters import (
+    TextInterpreter, FileInterpreter, MermaidInterpreter, 
+    InterpreterChain
+)
 from telegramify_markdown.type import ContentTypes
 
 tips = """
@@ -29,12 +32,19 @@ get_runtime_config().markdown_symbol.head_level_1 = "📌"  # If you want, Custo
 get_runtime_config().markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding="utf-8")
 
-
 # Write an async function to send message
 async def send_message():
+    # Create a custom interpreter chain
+    interpreter_chain = InterpreterChain([
+        TextInterpreter(),  # Use pure text first
+        FileInterpreter(),  # Handle code blocks
+        MermaidInterpreter(session=None),  # Handle Mermaid charts
+    ])
+    
+    # Use the custom interpreter chain
     boxs = await telegramify_markdown.telegramify(
         content=md,
-        interpreters_use=[BaseInterpreter(), MermaidInterpreter(session=None)],  # Render mermaid diagram
+        interpreters_use=interpreter_chain,
         latex_escape=True,
         normalize_whitespace=True,
         max_word_count=4090  # The maximum number of words in a single message.

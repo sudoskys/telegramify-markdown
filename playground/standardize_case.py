@@ -44,7 +44,7 @@ pre-formatted fixed-width code block written in the Python programming language
 """
 
 converted = telegramify_markdown.standardize(telegram_v2)
-
+print(converted)
 # Compare Line
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
