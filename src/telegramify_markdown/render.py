@@ -13,9 +13,9 @@ from mistletoe.markdown_renderer import (
 from .customize import get_runtime_config
 
 
-class TelegramSpoiler(span_token.SpanToken):
+class Spoiler(span_token.SpanToken):
     """
-    Telegram Spoiler token. ("||some text||")
+    Spoiler token. ("||some text||")
     This is an inline token. Its children are inline (span) tokens.
     """
 
@@ -115,10 +115,14 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
     def __init__(self, *extras, **kwargs):
         super().__init__(
             *chain(
-                (TaskListItem,),
+                (
+                    Spoiler,
+                    TaskListItem
+                ),
                 extras,
             )
         )
+        self.render_map["Spoiler"] = self.render_spoiler
         self.render_map["TaskListItem"] = self.render_task_list_item
 
     def render_quote(
@@ -218,6 +222,9 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
         self, token: span_token.Strikethrough
     ) -> Iterable[Fragment]:
         return self.embed_span(Fragment("~"), token.children)
+
+    def render_spoiler(self, token: Spoiler) -> Iterable[Fragment]:
+        return self.embed_span(Fragment("||"), token.children)
 
     def render_task_list_item(
         self, token: TaskListItem, max_line_length: int
@@ -321,19 +328,16 @@ class TelegramMarkdownFormatter(TelegramMarkdownRenderer):
         super().__init__(
             *chain(
                 (
-                    TelegramSpoiler,
+                    Spoiler,
                     TelegramStrikethrough,
                     TaskListItem,
                 ),
                 extras,
             )
         )
-        self.render_map["TelegramSpoiler"] = self.render_telegram_spoiler
+        self.render_map["Spoiler"] = self.render_spoiler
         self.render_map["TelegramStrikethrough"] = self.render_telegram_strikethrough
         self.render_map["TaskListItem"] = self.render_task_list_item
-
-    def render_telegram_spoiler(self, token: TelegramSpoiler) -> Iterable[Fragment]:
-        return self.embed_span(Fragment("||"), token.children)
 
     def render_telegram_strikethrough(
         self, token: TelegramStrikethrough
@@ -345,5 +349,5 @@ class TelegramMarkdownFormatter(TelegramMarkdownRenderer):
 
     def render_strong(self, token: span_token.Strong) -> Iterable[Fragment]:
         if token.delimiter == "_":
-            return self.embed_span(Fragment(token.delimiter), token.children)
+            return self.embed_span(Fragment(token.delimiter * 2), token.children)
         return self.embed_span(Fragment(token.delimiter), token.children)
