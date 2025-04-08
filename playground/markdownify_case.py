@@ -7,10 +7,7 @@ from telebot import TeleBot
 import telegramify_markdown
 
 customize = telegramify_markdown.customize.get_runtime_config() # Get the global Customize singleton instance
-
-# Customize the markdownify
-customize.strict_markdown = False  # treat `__` as underline instead of bold
-print("strict_markdown:", customize.strict_markdown)
+customize.markdown_symbol.head_level_1 = "⭐"
 
 # Test html tags
 html_t = telegramify_markdown.markdownify(
