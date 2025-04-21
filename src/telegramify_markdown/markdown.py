@@ -16,4 +16,4 @@ def code(body: str) -> str:
 
 
 def link(body: str, href: str) -> str:
-    return f"[{escape(body)}]({href})"
+    return f"[{escape(body)}]({escape(href)})"
