@@ -47,6 +47,8 @@ function over the interval \([x_1, x_2]\).
 ![👍](tg://emoji?id=53683241706712http-hack)
 [👍](tg://emoji?id=53683241706712http-hack)
 [](tg://emoji?id=5368324170671202286)
+[test](https://echo.free.helicopter.com/?test=abc(123)xyz)
+[inline mention of a user](tg://user?id=123456789)
 
 **Latex Math**
 Function Change:
