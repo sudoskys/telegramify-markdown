@@ -114,6 +114,11 @@ print("Hello, World!")
 [rttt]()
 [some text3][asdasd2]
 
+**Link Reference Definition**
+See the [GitHub milestone][ms-v0.107.71] for details.
+
+[ms-v0.107.71]: https://github.com/AdguardTeam/AdGuardHome/milestone/106?closed=1
+
 ![Image](https://www.example.com/image.jpg)
 
 <https://www.google.com>
