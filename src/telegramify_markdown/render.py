@@ -293,7 +293,7 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             # "[" description "][" label "]"
             yield from (
                 Fragment(markdown.escape("[")),
-                Fragment(token.label, wordwrap=True),
+                Fragment(markdown.escape(token.label), wordwrap=True),
                 Fragment(markdown.escape("]")),
             )
         elif token.dest_type == "collapsed":
