@@ -261,9 +261,8 @@ class TelegramMarkdownRenderer(MarkdownRenderer):
             Fragment(
                 get_runtime_config().markdown_symbol.link
                 + markdown.link(
-                    content=token.title if token.title else token.label,
-                    url=token.dest,
-                    escape=True,
+                    body=token.title if token.title else token.label,
+                    href=token.dest,
                 )
             ),
         )
