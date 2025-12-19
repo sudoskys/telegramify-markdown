@@ -4,7 +4,9 @@ from typing import Union, List, Tuple, Any
 import mistletoe
 from mistletoe.block_token import BlockToken, ThematicBreak  # noqa
 from mistletoe.markdown_renderer import LinkReferenceDefinition, BlankLine
-from mistletoe.span_token import SpanToken  # noqa
+from mistletoe.span_token import SpanToken
+
+from telegramify_markdown.word_count import count_markdown  # noqa
 
 from . import customize
 from .interpreters import (
@@ -159,7 +161,7 @@ async def telegramify(
         def is_over_max_word_count(doc_t: List[Tuple[Any, Any]]):
             doc = mistletoe.Document(lines=[])
             doc.children = [___token for ___token, ___token2 in doc_t]
-            return len(renderer.render(doc)) > max_word_count
+            return count_markdown(renderer.render(doc)) > max_word_count
 
         def render_block(doc_t: List[Any]):
             doc = mistletoe.Document(lines=[])
