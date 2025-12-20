@@ -16,7 +16,7 @@ from telegramify_markdown.type import (
     SentType,
     ContentTrace,
 )
-from telegramify_markdown.word_count import count_markdown, hard_split_markdown
+from telegramify_markdown.word_count import count_markdown
 
 if TYPE_CHECKING:
     try:
@@ -234,15 +234,6 @@ class BaseInterpreter(object):
             chunks.append(text[:limit])
             text = text[limit:]
         return chunks
-
-
-if __name__ == "__main__":
-    # Test case
-    content = "".join([f"[a](http://example.com/{'a'*50})" for _ in range(10)])
-    interpreter = BaseInterpreter()
-    chunks = interpreter._hard_split(content, 50)
-    print(f"Hard split chunks count: {len(chunks)}")
-    assert len(chunks) < 5
 
 
 class TextInterpreter(BaseInterpreter):
