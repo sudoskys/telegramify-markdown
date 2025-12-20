@@ -16,6 +16,7 @@ from telegramify_markdown.type import (
     SentType,
     ContentTrace,
 )
+from telegramify_markdown.word_count import count_markdown, hard_split_markdown
 
 if TYPE_CHECKING:
     try:
@@ -117,7 +118,7 @@ class BaseInterpreter(object):
         3. If there are no punctuation marks, split by hard split
         """
         # If the text length is less than the maximum word count limit, return directly
-        if len(text) <= max_word_count:
+        if count_markdown(text) <= max_word_count:
             return [text]
 
         # Split by newline
@@ -127,11 +128,11 @@ class BaseInterpreter(object):
 
         for line in lines:
             # If the current line plus the current block does not exceed the maximum word count limit, add it to the current block
-            if len(current_chunk + line + "\n") <= max_word_count:
+            if count_markdown(current_chunk + line + "\n") <= max_word_count:
                 current_chunk += line + "\n"
             else:
                 # If the current line itself exceeds the maximum word count limit, it needs to be further split
-                if len(line) > max_word_count:
+                if count_markdown(line) > max_word_count:
                     # If the current block is not empty, save the current block first
                     if current_chunk:
                         result.append(current_chunk.rstrip())
@@ -178,11 +179,11 @@ class BaseInterpreter(object):
                 segment += segments[i + 1]
 
             # If the current segment plus the current block does not exceed the maximum word count limit, add it to the current block
-            if len(current_chunk + segment) <= max_word_count:
+            if count_markdown(current_chunk + segment) <= max_word_count:
                 current_chunk += segment
             else:
                 # If the current segment itself exceeds the maximum word count limit, it needs to be hard split
-                if len(segment) > max_word_count:
+                if count_markdown(segment) > max_word_count:
                     # If the current block is not empty, save the current block first
                     if current_chunk:
                         chunks.append(current_chunk)
@@ -205,15 +206,43 @@ class BaseInterpreter(object):
 
     def _hard_split(self, text: str, max_word_count: int) -> List[str]:
         """
-        Hard split text, split directly according to the maximum word count limit
+        Hard split text, split directly according to the maximum word count limit.
+        Uses count_markdown to approximate the split point efficiently.
         :param text: str
         :param max_word_count: int
         :return: List[str]
         """
         chunks = []
-        for i in range(0, len(text), max_word_count):
-            chunks.append(text[i : i + max_word_count])
+        while text:
+            limit = max_word_count
+            # Exponential probe to find the largest valid block (handling non-monotonicity of count_markdown)
+            candidate = limit
+            while candidate < len(text):
+                candidate = min(len(text), candidate * 2)
+                if count_markdown(text[:candidate]) <= max_word_count:
+                    limit = candidate
+                if candidate == len(text): break
+            
+            # Fine-tuning to fill the gap
+            while limit < len(text):
+                c = count_markdown(text[:limit])
+                if max_word_count - c < 10: break
+                new_limit = min(len(text), limit + (max_word_count - c))
+                if count_markdown(text[:new_limit]) > max_word_count: break
+                limit = new_limit
+
+            chunks.append(text[:limit])
+            text = text[limit:]
         return chunks
+
+
+if __name__ == "__main__":
+    # Test case
+    content = "".join([f"[a](http://example.com/{'a'*50})" for _ in range(10)])
+    interpreter = BaseInterpreter()
+    chunks = interpreter._hard_split(content, 50)
+    print(f"Hard split chunks count: {len(chunks)}")
+    assert len(chunks) < 5
 
 
 class TextInterpreter(BaseInterpreter):
