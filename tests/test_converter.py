@@ -268,6 +268,56 @@ class MathTest(unittest.TestCase):
         self.assertIsNotNone(pre)
 
 
+class LatexHelperTest(unittest.TestCase):
+    """Tests for the LaTeX-to-Unicode helper (latex_escape/helper.py)."""
+
+    def setUp(self):
+        from telegramify_markdown.latex_escape.helper import LatexToUnicodeHelper
+        self.helper = LatexToUnicodeHelper()
+
+    def test_superscript_latex_command(self):
+        """Regression test for #87: \\lambda^\\phi should produce λᵠ."""
+        result = self.helper.convert(r"\lambda^\phi")
+        self.assertIn("λ", result)
+        self.assertIn("ᵠ", result)
+        self.assertNotIn("\\phi", result)
+
+    def test_subscript_latex_command(self):
+        result = self.helper.convert(r"a_\beta")
+        self.assertIn("a", result)
+        self.assertIn("ᵦ", result)
+        self.assertNotIn("\\beta", result)
+
+    def test_superscript_with_braces(self):
+        result = self.helper.convert(r"x^{2}")
+        self.assertEqual(result, "x²")
+
+    def test_superscript_frac_after_command(self):
+        result = self.helper.convert(r"x^\frac{1}{2}")
+        self.assertIn("½", result)
+
+    def test_basic_symbols(self):
+        result = self.helper.convert(r"\Delta y")
+        self.assertIn("Δ", result)
+
+    def test_fraction(self):
+        result = self.helper.convert(r"\frac{1}{2}")
+        self.assertEqual(result, "½")
+
+
+class LatexConverterTest(unittest.TestCase):
+    """Tests for LaTeX processing through the full convert() pipeline."""
+
+    def test_inline_latex_escape(self):
+        text, entities = convert(r"\(\lambda^\phi\)", latex_escape=True)
+        self.assertIn("λ", text)
+        self.assertIn("ᵠ", text)
+
+    def test_display_latex_escape(self):
+        text, entities = convert(r"\[\frac{1}{2}\]", latex_escape=True)
+        self.assertIn("½", text)
+
+
 class ComplexDocumentTest(unittest.TestCase):
     def test_mixed_content(self):
         md = """# Hello World

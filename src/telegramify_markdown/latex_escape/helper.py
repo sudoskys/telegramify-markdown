@@ -167,7 +167,13 @@ class LatexToUnicodeHelper:
                 sym, arg, i = latex[i], '', i + 1
                 if i < len(latex) and latex[i] == '{':
                     arg, i = self.parse_block(latex, i)
-                else:
+                elif i < len(latex) and latex[i] == '\\':
+                    # Parse the full LaTeX command as the sub/superscript argument
+                    command, i = self.parse_command(latex, i)
+                    if command == "\\frac" and result and result[-1] and result[-1][-1].isdigit():
+                        result[-1] = result[-1] + " "
+                    arg, i = self.handle_command(command, latex, i)
+                elif i < len(latex):
                     arg, i = latex[i], i + 1
                 result.append(self.make_subscript(arg) if sym == '_' else self.make_superscript(arg))
             elif latex[i].isspace():
