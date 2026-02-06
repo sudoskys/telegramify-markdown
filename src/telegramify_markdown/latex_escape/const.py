@@ -10,6 +10,7 @@ LATEX_SYMBOLS = {
     "$": "",  # Ignore $
 
     "~": " ",
+    "\\ ": " ",
     "\\;": " ",
     "\\:": " ",
     "\\,": " ",
@@ -414,7 +415,71 @@ LATEX_SYMBOLS = {
     "\\pounds": "£",
     "\\euro": "€",
     "\\EUR": "€",
-    "\\texteuro": "€"
+    "\\texteuro": "€",
+
+    # 数学算子 — 标准 LaTeX 中渲染为正体文本
+    "\\lim": "lim",
+    "\\limsup": "lim sup",
+    "\\liminf": "lim inf",
+    "\\sin": "sin",
+    "\\cos": "cos",
+    "\\tan": "tan",
+    "\\sec": "sec",
+    "\\csc": "csc",
+    "\\cot": "cot",
+    "\\arcsin": "arcsin",
+    "\\arccos": "arccos",
+    "\\arctan": "arctan",
+    "\\sinh": "sinh",
+    "\\cosh": "cosh",
+    "\\tanh": "tanh",
+    "\\log": "log",
+    "\\ln": "ln",
+    "\\exp": "exp",
+    "\\lg": "lg",
+    "\\max": "max",
+    "\\min": "min",
+    "\\sup": "sup",
+    "\\inf": "inf",
+    "\\det": "det",
+    "\\gcd": "gcd",
+    "\\deg": "deg",
+    "\\dim": "dim",
+    "\\hom": "hom",
+    "\\ker": "ker",
+    "\\arg": "arg",
+    "\\Pr": "Pr",
+    "\\bmod": " mod ",
+    "\\mod": " mod ",
+
+    # 负细空格
+    "\\!": "",
+
+    # 布局提示 — 静默忽略
+    "\\limits": "",
+    "\\nolimits": "",
+    "\\displaystyle": "",
+    "\\textstyle": "",
+    "\\scriptstyle": "",
+    "\\scriptscriptstyle": "",
+    "\\nonumber": "",
+    "\\notag": "",
+
+    # 其他常用符号
+    "\\vert": "|",
+    "\\Vert": "‖",
+    "\\lvert": "|",
+    "\\rvert": "|",
+    "\\lVert": "‖",
+    "\\rVert": "‖",
+    "\\lgroup": "(",
+    "\\rgroup": ")",
+    "\\land": "∧",
+    "\\lor": "∨",
+    "\\owns": "∋",
+
+    # 双反斜杠换行
+    "\\\\": "\n",
 }
 
 
@@ -598,7 +663,9 @@ LATEX_STYLES = {
     "\\mathit": IT,
     "\\textit": IT,
     "\\mathtt": TT,
-    "\\texttt": TT
+    "\\texttt": TT,
+    "\\mathrm": {},  # 正体 — .get(char, char) 原样返回
+    "\\mathsf": {},  # 无衬线 — 同上
 }
 
 # Module for handling LaTeX to Unicode conversions

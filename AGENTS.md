@@ -24,15 +24,20 @@
 | 可选依赖 | Pillow, aiohttp（Mermaid 渲染） |
 | 测试依赖 | pyTelegramBotAPI, python-dotenv（Telegram 集成测试） |
 
+## 开发环境
+
+本项目使用 **PDM** 管理依赖和虚拟环境。所有开发操作（安装、测试、构建）必须通过 `pdm` 命令执行，不要直接使用 `pip install -e .` 或 `python -m unittest`。
+
+PDM 会自动管理 `.venv` 虚拟环境和 `src/` 布局下的包路径。
+
 ## Common Commands
 
 ```bash
-pdm install                  # 安装依赖
+pdm install                  # 安装依赖（创建 .venv 并安装项目）
 pdm install -G mermaid       # 安装含 mermaid 支持
 pdm install -G tests         # 安装测试依赖
-pdm run test                 # 运行测试
+pdm run test                 # 运行测试（必须用此命令，确保包路径正确）
 pdm build                    # 构建包
-pip install -e .             # 开发模式安装
 ```
 
 ## Architecture
