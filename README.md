@@ -18,7 +18,7 @@ produces `(text, entities)` tuples that can be sent directly via the Telegram Bo
 > v1.0.0 is a breaking change from 0.x. The output is now `(str, list[MessageEntity])` instead of a MarkdownV2 string.
 > The old `markdownify()` and `standardize()` functions have been removed.
 >
-> **Currently in release candidate.** Install with `pip install telegramify-markdown==1.0.0rc1` to try it.
+> **Currently in release candidate.** Install with `pip install telegramify-markdown==1.0.0rc2` to try it.
 > The default `pip install telegramify-markdown` still installs the stable 0.5.x version.
 
 ## For AI Coding Assistants
