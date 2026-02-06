@@ -69,10 +69,10 @@ def is_image(data: BytesIO) -> bool:
     :return: If the data is an image, return True; otherwise, return False
     """
     try:
-        # 使用 Pillow 验证是否是合法图片
+        # Verify image validity using Pillow
         from PIL import Image
         with Image.open(data) as img:
-            img.verify()  # 验证图片
+            img.verify()
         return True
     except ImportError:
         raise ImportError("Pillow library is required but not installed.")
@@ -186,26 +186,3 @@ def support_mermaid():
     return True
 
 
-if __name__ == '__main__':
-    mermaid_md = """
-    sequenceDiagram
-        Alice ->> Bob: Hello Bob, how are you?
-        Bob-->>John: How about you John?
-        Bob--x Alice: I am good thanks!
-        Bob-x John: I am good thanks!
-        Note right of John: Bob thinks a long<br/>long time, so long<br/>that the text does<br/>not fit on a row.
-    """
-
-
-    async def run():
-        t1 = await render_mermaid(mermaid_md)
-        print(t1)
-        # 展示图片
-        try:
-            from PIL import Image
-            Image.open(t1[0]).show()
-        except ImportError as e:
-            print("Pillow library is required but not installed.")
-
-
-    asyncio.run(run())

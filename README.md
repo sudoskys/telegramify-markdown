@@ -4,258 +4,283 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-**Effortlessly Convert Raw Markdown to Telegram's [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style)
-Style**
+Convert Markdown to Telegram **plain text + [MessageEntity](https://core.telegram.org/bots/api#messageentity)** pairs.
 
-Say goodbye to formatting issues! You no longer need to write parsers to convert raw Markdown text into Telegram's
-MarkdownV2 format.
+No more MarkdownV2 escaping headaches. This library parses Markdown (including LLM output, GitHub READMEs, etc.) and
+produces `(text, entities)` tuples that can be sent directly via the Telegram Bot API — no `parse_mode` needed.
 
-This library is designed to make reading and sending Markdown content on Telegram easier and more efficient. It is ideal
-for LLM responses, GitHub README files, and more.
-
-- No matter the format or length, it can be easily handled!
-- Forget about formatting errors from the API. Our custom renderer has been tested in a real server environment to
-  ensure
-  its effectiveness.
-- We also support Latex Visualization(escape) and Expanded Citation.
-- (telegramify) Mermaid Diagrams render supported.
+- Handles any format or length — long messages are automatically split at newline boundaries.
+- Entity offsets are measured in UTF-16 code units, exactly as Telegram requires.
+- Supports LaTeX-to-Unicode conversion, expandable block quotes, Mermaid diagram rendering, and more.
+- Built on [pyromark](https://github.com/monosans/pyromark) (Rust pulldown-cmark bindings) for speed and correctness.
 
 > [!NOTE]
-> If you're interested, there's also a Node.js version of the library
-> available: [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
+> v1.0.0 is a breaking change from 0.x. The output is now `(str, list[MessageEntity])` instead of a MarkdownV2 string.
+> The old `markdownify()` and `standardize()` functions have been removed.
 
-## 🪄 Quick Start
+## For AI Coding Assistants
 
-To install the library, run:
+Copy this block into your AI assistant's context (e.g. `CLAUDE.md`, Cursor Rules, etc.) to get
+accurate code generation for telegramify-markdown:
+
+<details>
+<summary>Click to expand context block</summary>
+
+```markdown
+# telegramify-markdown integration guide
+
+## Install
+pip install telegramify-markdown
+
+## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
+
+### convert() — sync, single message
+from telegramify_markdown import convert
+text, entities = convert("**bold** and _italic_")
+bot.send_message(chat_id, text, entities=[e.to_dict() for e in entities])
+# Do NOT set parse_mode — entities replace it entirely.
+
+### telegramify() — async, auto-splits long text, extracts code blocks as files
+from telegramify_markdown import telegramify
+from telegramify_markdown.content import ContentType
+results = await telegramify(md, max_message_length=4090)
+for item in results:
+    if item.content_type == ContentType.TEXT:
+        bot.send_message(chat_id, item.text, entities=[e.to_dict() for e in item.entities])
+    elif item.content_type == ContentType.FILE:
+        bot.send_document(chat_id, (item.file_name, item.file_data))
+    elif item.content_type == ContentType.PHOTO:
+        bot.send_photo(chat_id, (item.file_name, item.file_data))
+
+### split_entities() — manual splitting for convert() output
+from telegramify_markdown import convert, split_entities
+text, entities = convert(long_md)
+for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
+    bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
+
+### Configuration
+from telegramify_markdown.config import get_runtime_config
+cfg = get_runtime_config()
+cfg.markdown_symbol.heading_level_1 = "📌"
+cfg.cite_expandable = True
+
+## Critical rules
+- entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string
+- NEVER set parse_mode when sending with entities — they are mutually exclusive
+- All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
+- Requires Python 3.10+
+```
+
+</details>
+
+## Install
 
 ```bash
 pip install telegramify-markdown
+# Optional: Mermaid diagram rendering
 pip install telegramify-markdown[mermaid]
 ```
 
-or, if you use `pdm`:
+Or with PDM:
 
-```shell
+```bash
 pdm add telegramify-markdown
 pdm add telegramify-markdown -G mermaid
-# -G mermaid -G tests 
-# -> https://pdm-project.org/en/latest/reference/pep621/#optional-dependencies
 ```
 
-### 🤔 What you want to do?
+Requires **Python 3.10+**.
 
-- If you just want to send *static text* and don't want to worry about formatting,
-  check:[playground/markdownify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/markdownify_case.py)
+## Quick Start
 
-- If you are developing an *LLM application* or need to send potentially **super-long text**, please
-  check:[playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
+### `convert()` — single message
 
-- If you want to write TelegramV2 format text directly in bot, please check:[playground/standardize_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/standardize_case.py)
-
-We have three main functions: `markdownify`, `telegramify`, and `standardize`.
-
-`markdownify`: Just converts raw Markdown text to Telegram's MarkdownV2 format, used for LLM like ChatGPT.
-
-`telegramify`: Spilt long text into multiple chunks, convert format and use Interpreter to render code block to File,
-Image etc, used for LLM bot developers who want do more with Telegram's MarkdownV2 format.
-
-`standardize`: Convert unstandardized Telegram's MarkdownV2 format to standardized format(convenient for bot developers write something directly in bot).
-
-> `Interpreter` can be easily customized to inspect the rendering process in `telegramify`.
-
-## 👀 Use case
-
-| markdownify_case 1              | markdownify_case 2              | telegramify_case                |
-|---------------------------------|---------------------------------|---------------------------------|
-| ![result](.github/result-7.png) | ![result](.github/result-8.png) | ![result](.github/result-9.png) |
-
-### `markdownify`
-
-````python3
-import telegramify_markdown
-from telegramify_markdown import customize
-
-customize.markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
-customize.markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
-customize.strict_markdown = True  # If you want to use __underline__ as underline, set it to False, or it will be converted to bold as telegram does.
-customize.cite_expandable = True  # If you want to enable expandable citation, set it to True.
-
-# Use `r` to avoid escaping the backslash.
-markdown_text = r""" 
-# Title
-## Subtitle
-### Subsubtitle
-#### Subsubsubtitle
-
-\(TEST
-\\(TEST
-\\\(TEST
-\\\\(TEST
-\\\\\(TEST
-
-**Latex Math**
-Function Change:
-    \(\Delta y = f(x_2) - f(x_1)\) can represent the change in the value of a function.
-Average Rate of Change:
-    \(\frac{\Delta y}{\Delta x} = \frac{f(x_2) - f(x_1)}{x_2 - x_1}\) is used to denote the average rate of change of a function over the interval \([x_1, x_2]\).
-- Slope:
-   \[
-   F = G\frac{{m_1m_2}}{{r^2}}
-   \]
-- Inline: \(F = G\frac{{m_1m_2}}{{r^4}}\)
-
-There \frac{1}{2} not in the latex block.
-
-**Table**
-
-| Tables        | Are           | Cool  |
-| ------------- |:-------------:| -----:|
-|               | right-aligned | $1600 |
-| col 2 is      | centered      |   $12 |
-| zebra stripes | are neat      |    $1 |
-
-'\_', '\*', '\[', '\]', '\(', '\)', '\~', '\`', '\>', '\#', '\+', '\-', '\=', '\|', '\{', '\}', '\.', '\!'
-_ , * , [ , ] , ( , ) , ~ , ` , > , # , + , - , = , | , { , } , . , !
-We will remove the \ symbol from the original text.
-**bold text**
-*bold text*
-_italic text_
-__underline__
-~no valid strikethrough~
-~~strikethrough~~
-||spoiler||
-*bold _italic bold ~~italic bold strikethrough ||italic bold strikethrough spoiler||~~ __underline italic bold___ bold*
-__underline italic bold__
-[link](https://www.google.com)
-- [ ] Uncompleted task list item
-- [x] Completed task list item
-> Quote
-
->Multiline Quote In Markdown it's not possible to send multiline quote in telegram without using code block or html tag but telegramify_markdown can do it. 
----
-Text
-
-Text
-
-Text
-> If you quote is too long, it will be automatically set in expandable citation. 
-> This is the second line of the quote.
-> `This is the third line of the quote.`
-> This is the fourth line of the quote.
-> `This is the fifth line of the quote.`
-
-"""
-converted = telegramify_markdown.markdownify(
-    markdown_text,
-    max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
-    normalize_whitespace=False
-)
-print(converted)
-# export Markdown to Telegram MarkdownV2 style.
-````
-
-### `telegramify`
-
-please
-check: [playground/telegramify_case.py](https://github.com/sudoskys/telegramify-markdown/blob/main/playground/telegramify_case.py)
-
-### `standardize`
+Convert Markdown to `(text, entities)` and send with any bot library:
 
 ```python
-import telegramify_markdown
-from telegramify_markdown.customize import get_runtime_config
+from telebot import TeleBot
+from telegramify_markdown import convert
 
-# Customize symbols (optional)
-markdown_symbol = get_runtime_config().markdown_symbol
-markdown_symbol.head_level_1 = "📌"  # Customize the first level title symbol
-markdown_symbol.link = "🔗"  # Customize the link symbol
+bot = TeleBot("YOUR_TOKEN")
 
-# Telegram MarkdownV2 format text
-telegram_v2 = r"""
-# Title
-*bold \*text*
-_italic \*text_
-__underline__
-~strikethrough~
-||spoiler||
-*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
+md = "**Bold**, _italic_, and `code`."
+text, entities = convert(md)
 
->Block quotation started
->Block quotation continued
->The last line of the block quotation
-"""
-
-# Standardize processing
-converted = telegramify_markdown.standardize(telegram_v2)
-
-# Send to Telegram
 bot.send_message(
     chat_id,
-    converted,
-    parse_mode="MarkdownV2"  # Must use MarkdownV2 parsing mode
+    text,
+    entities=[e.to_dict() for e in entities],
 )
 ```
 
-## 🔨 Supported Input
+No `parse_mode` parameter — Telegram reads the entities directly.
 
-- [x] Headings (Levels 1-6)
-- [x] `Links [text](url)`
-- [x] `Images ![alt](url)`
-- [x] Lists (Ordered and Unordered)
-- [x] Tables `|-|-|`
-- [x] Horizontal Rules `----`
-- [x] Text Styles `*Italic*` and `**Bold**`
-- [x] Underline `__Underline__` (if `customize.strict_markdown` is False)
-- [x] Code Blocks
-- [x] Inline Code
-- [x] Block Quotes `>`
-- [x] Strikethrough `~~Strikethrough~~`
-- [x] Spoilers `||Spoiler||`
-- [x] Task Lists
-- [x] Expanded Citation
-- [x] Telegram Emojis
-- [ ] Telegram User Mentions
-- [ ] Strikethrough `~Strikethrough~`
+### `telegramify()` — long messages, code files, diagrams
 
-> [!NOTE]
-> Despite `~Strikethrough~` being mentioned in Telegram's official documentation, it can't be parsed as strikethrough.
-
-## 🔭 Proper Usage
+For LLM output or long documents, `telegramify()` splits text, extracts code blocks as files,
+and renders Mermaid diagrams as images:
 
 ```python
-import textwrap
-
+import asyncio
 from telebot import TeleBot
+from telegramify_markdown import telegramify
+from telegramify_markdown.content import ContentType
 
-import telegramify_markdown
-import telegramify_markdown.customize as customize
+bot = TeleBot("YOUR_TOKEN")
 
-customize.strict_markdown = False
-value1 = 52222
-markdown_text = textwrap.dedent(
-    f"""
-    # Title
-    ## Subtitle
-    value1: {value1}
-    ||spoiler||
-    """
-)
-can_be_sent = telegramify_markdown.markdownify(markdown_text)
-TeleBot("TOKEN").send_message(
-    "CHAT_ID",
-    can_be_sent,
-    parse_mode="MarkdownV2"
-)
+md = """
+# Report
+
+Here is some analysis with **bold** and _italic_ text.
+
+```python
+print("hello world")
 ```
 
-## 🧸 Acknowledgement
+And a diagram:
+
+```mermaid
+graph TD
+    A-->B
+```
+"""
+
+async def send():
+    results = await telegramify(md, max_message_length=4090)
+    for item in results:
+        if item.content_type == ContentType.TEXT:
+            bot.send_message(
+                chat_id,
+                item.text,
+                entities=[e.to_dict() for e in item.entities],
+            )
+        elif item.content_type == ContentType.PHOTO:
+            bot.send_photo(
+                chat_id,
+                (item.file_name, item.file_data),
+                caption=item.caption_text or None,
+                caption_entities=[e.to_dict() for e in item.caption_entities] or None,
+            )
+        elif item.content_type == ContentType.FILE:
+            bot.send_document(
+                chat_id,
+                (item.file_name, item.file_data),
+                caption=item.caption_text or None,
+                caption_entities=[e.to_dict() for e in item.caption_entities] or None,
+            )
+
+asyncio.run(send())
+```
+
+### `split_entities()` — manual splitting
+
+If you use `convert()` but need to split long output yourself:
+
+```python
+from telegramify_markdown import convert, split_entities
+
+text, entities = convert(long_markdown)
+
+for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
+    bot.send_message(
+        chat_id,
+        chunk_text,
+        entities=[e.to_dict() for e in chunk_entities],
+    )
+```
+
+## Configuration
+
+Customize heading symbols, link symbols, and expandable citation behavior:
+
+```python
+from telegramify_markdown.config import get_runtime_config
+
+cfg = get_runtime_config()
+cfg.markdown_symbol.heading_level_1 = "📌"
+cfg.markdown_symbol.link = "🔗"
+cfg.cite_expandable = True  # Long quotes become expandable_blockquote
+```
+
+## API Reference
+
+### `convert(markdown, *, latex_escape=True) -> tuple[str, list[MessageEntity]]`
+
+Synchronous. Converts a Markdown string to plain text and a list of `MessageEntity` objects.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `markdown` | `str` | required | Raw Markdown text |
+| `latex_escape` | `bool` | `True` | Convert LaTeX `\(...\)` and `\[...\]` to Unicode symbols |
+
+Returns `(text, entities)` where `text` is plain text and `entities` is a list of `MessageEntity`.
+
+### `telegramify(content, *, max_message_length=4096, latex_escape=True) -> list[Text | File | Photo]`
+
+Async. Full pipeline: converts Markdown, splits long messages, extracts code blocks as files,
+renders Mermaid diagrams as images.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `content` | `str` | required | Raw Markdown text |
+| `max_message_length` | `int` | `4096` | Max UTF-16 code units per text message |
+| `latex_escape` | `bool` | `True` | Convert LaTeX to Unicode |
+
+Returns an ordered list of `Text`, `File`, or `Photo` objects.
+
+### `split_entities(text, entities, max_utf16_len) -> list[tuple[str, list[MessageEntity]]]`
+
+Split text + entities into chunks within a UTF-16 length limit. Splits at newline boundaries;
+entities spanning a split point are clipped into both chunks.
+
+### `MessageEntity`
+
+```python
+@dataclasses.dataclass(slots=True)
+class MessageEntity:
+    type: str           # "bold", "italic", "code", "pre", "text_link", etc.
+    offset: int         # Start position in UTF-16 code units
+    length: int         # Length in UTF-16 code units
+    url: str | None     # For "text_link" entities
+    language: str | None       # For "pre" entities (code block language)
+    custom_emoji_id: str | None  # For "custom_emoji" entities
+
+    def to_dict(self) -> dict: ...
+```
+
+### Content Types
+
+| Class | Fields | Description |
+|-------|--------|-------------|
+| `Text` | `text`, `entities`, `content_trace` | A text message segment |
+| `File` | `file_name`, `file_data`, `caption_text`, `caption_entities`, `content_trace` | An extracted code block |
+| `Photo` | `file_name`, `file_data`, `caption_text`, `caption_entities`, `content_trace` | A rendered Mermaid diagram |
+
+### `utf16_len(text) -> int`
+
+Returns the length of a string in UTF-16 code units (what Telegram uses for offsets).
+
+## Supported Markdown Features
+
+- [x] Headings (Levels 1-4, rendered as bold with emoji prefix)
+- [x] `**Bold**`, `*Italic*`, `~~Strikethrough~~`
+- [x] `||Spoiler||`
+- [x] `[Links](url)` and `![Images](url)`
+- [x] Telegram custom emoji `![emoji](tg://emoji?id=...)`
+- [x] Inline `code` and fenced code blocks
+- [x] Block quotes `>` (with expandable citation support)
+- [x] Tables (rendered as monospace `pre` blocks)
+- [x] Ordered and unordered lists
+- [x] Task lists `- [x]` / `- [ ]`
+- [x] Horizontal rules `---`
+- [x] LaTeX math `\(...\)` and `\[...\]` (converted to Unicode)
+- [x] Mermaid diagrams (rendered as images, requires `[mermaid]` extra)
+
+## Acknowledgement
 
 This library is inspired by [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
-latex escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
+LaTeX escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
 
-## 📜 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

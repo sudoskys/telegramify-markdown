@@ -6,17 +6,9 @@ from telebot import TeleBot
 
 import telegramify_markdown
 
-customize = telegramify_markdown.customize.get_runtime_config() # Get the global Customize singleton instance
-customize.markdown_symbol.head_level_1 = "⭐"
+customize = telegramify_markdown.config.get_runtime_config()
+customize.markdown_symbol.heading_level_1 = "⭐"
 
-# Test html tags
-html_t = telegramify_markdown.markdownify(
-    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;",
-    latex_escape=True
-)
-print(html_t)
-
-# Use textwrap.dedent to remove the leading whitespace from the text.
 md = textwrap.dedent(r"""
 # Title
 ## Subtitle
@@ -109,85 +101,20 @@ print("```")
 ```
 """)
 
-emoji_md = r"""
-![👍](tg://emoji?id=5368324170671202286)
-"""
-url_exp= r"""
-[Test](https://test.com)
-"""
+# Convert to (text, entities)
+text, entities = telegramify_markdown.convert(md)
+print(text)
+print(f"\n--- {len(entities)} entities ---")
+for e in entities:
+    print(e.to_dict())
 
-# export Markdown to Telegram MarkdownV2 style.
-converted = telegramify_markdown.markdownify(
-    url_exp,
-    max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
-    normalize_whitespace=False,
-    latex_escape=True
-)
-print(converted)
-
+# Send to telegram
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
 chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
 bot = TeleBot(telegram_bot_token)
 bot.send_message(
     chat_id,
-    converted,
-    parse_mode="MarkdownV2" # IMPORTANT: Must be sent with "MarkdownV2" parse mode
+    text,
+    entities=[e.to_dict() for e in entities],
 )
-
-MARKDOWN_SYNTAX = r"""
-__bold__
-**bold text**
-_italic text_
-*italic text*
-~~strikethrough~~
-~not a strikethrough~
-||spoiler||
-"""
-# **bold & _italic & __underline & ~strikethrough & ||spoiler||~__****_**
-
-TELEGRAM_SYNTAX = r"""
-__underline__
-*bold text*
-_italic text_
-~strikethrough~
-~~not a strikethrough~~
-||spoiler||
-"""
-# *bold & _italic & __underline & ~~strikethrough & ||spoiler||~~__**_*
-
-
-SYNTAX: dict[str, dict[str, list[str]]] = {
-    "MARKDOWN": {
-        "underline": [], # Not supported in Markdown
-        "bold": ["__", "**"],
-        "italic": ["_", "*"],
-        "strike": ["~~"],
-    },
-    "TELEGRAM": {
-        "underline": ["__"],
-        "bold": ["*"],
-        "italic": ["_"],
-        "strike": ["~"],
-    }
-}
-
-def generate_expected_strings(syntax: str, func: callable) -> str:
-    strings = []
-    for key, values in SYNTAX[syntax].items():
-        for token in values:
-            wrap = lambda x: token + x + token
-            input = wrap("text")
-            output = func(input).strip()
-            print(f"  {wrap(key):14} => {func(wrap(key)).strip()}")
-            strings.append(func(f"- Given `{input}`, which becomes `{output}`, we get: {wrap(key)}"))
-    return "".join(strings)
-
-
-def generate_output_string(syntax: str, func: callable) -> str:
-    case = telegramify_markdown.markdownify(f"\n# {syntax} syntax")
-    print("\n" + case.replace("\\", "").strip())
-    return case + generate_expected_strings(syntax, func)
-
-bot.send_message(chat_id, generate_output_string("MARKDOWN", telegramify_markdown.markdownify) + telegramify_markdown.markdownify(MARKDOWN_SYNTAX), parse_mode="MarkdownV2")
-bot.send_message(chat_id, generate_output_string("TELEGRAM", telegramify_markdown.standardize) + telegramify_markdown.standardize(TELEGRAM_SYNTAX), parse_mode="MarkdownV2")

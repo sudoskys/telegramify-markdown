@@ -5,18 +5,11 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
+from telegramify_markdown.config import get_runtime_config
 
-customize = telegramify_markdown.customize.get_runtime_config() # Get the global Customize singleton instance
-customize.markdown_symbol.head_level_1 = "⭐"
+customize = get_runtime_config()
+customize.markdown_symbol.heading_level_1 = "⭐"
 
-# Test html tags
-html_t = telegramify_markdown.markdownify(
-    "Hello, World! HTML: &lt;strong&gt;Hello, World!&lt;/strong&gt;",
-    latex_escape=True
-)
-print(html_t)
-
-# Use textwrap.dedent to remove the leading whitespace from the text.
 md = textwrap.dedent(r"""
 # Title
 ## Subtitle
@@ -109,21 +102,12 @@ print("```")
 ```
 """)
 
-emoji_md = r"""
-![👍](tg://emoji?id=5368324170671202286)
-"""
-url_exp= r"""
-__underline _italic *bold*_**__
-"""
-
-# export Markdown to Telegram MarkdownV2 style.
-converted = telegramify_markdown.markdownify(
-    url_exp,
-    max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
-    normalize_whitespace=False,
-    latex_escape=True
-)
-print(converted)
+# Convert to (text, entities)
+text, entities = telegramify_markdown.convert(md)
+print(text)
+print(f"\n--- {len(entities)} entities ---")
+for e in entities:
+    print(e.to_dict())
 
 # Send to telegram
 load_dotenv()
@@ -132,6 +116,6 @@ chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
 bot = TeleBot(telegram_bot_token)
 bot.send_message(
     chat_id,
-    converted,
-    parse_mode="MarkdownV2" # IMPORTANT: Must be sent with "MarkdownV2" parse mode
+    text,
+    entities=[e.to_dict() for e in entities],
 )

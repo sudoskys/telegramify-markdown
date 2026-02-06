@@ -7,20 +7,8 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 
 import telegramify_markdown
-from telegramify_markdown.customize import get_runtime_config
-from telegramify_markdown.interpreters import (
-    TextInterpreter, FileInterpreter, MermaidInterpreter, 
-    InterpreterChain
-)
-from telegramify_markdown.type import ContentTypes
-
-tips = """
-telegramify_markdown.telegramify
-
-The stability of telegramify_markdown.telegramify is unproven, please keep good log records.
-
-Feel free to check it out, if you have any questions please open an issue
-"""
+from telegramify_markdown.config import get_runtime_config
+from telegramify_markdown.content import ContentType
 
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
@@ -28,73 +16,45 @@ chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
 bot = TeleBot(telegram_bot_token)
 
 # Customizing global rendering options
-get_runtime_config().markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
-get_runtime_config().markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
+get_runtime_config().markdown_symbol.heading_level_1 = "📌"
+get_runtime_config().markdown_symbol.link = "🔗"
 md = pathlib.Path(__file__).parent.joinpath("t_longtext.md").read_text(encoding="utf-8")
 
-# Write an async function to send message
+
 async def send_message():
-    # Create a custom interpreter chain
-    interpreter_chain = InterpreterChain([
-        TextInterpreter(),  # Use pure text first
-        FileInterpreter(),  # Handle code blocks
-        MermaidInterpreter(session=None),  # Handle Mermaid charts
-    ])
-    
-    # Use the custom interpreter chain
     boxs = await telegramify_markdown.telegramify(
         content=md,
-        interpreters_use=interpreter_chain,
         latex_escape=True,
-        normalize_whitespace=True,
-        max_word_count=4090  # The maximum number of words in a single message.
+        max_message_length=4090,
     )
     for item in boxs:
-        print("Sent one item")
+        print(f"Sending one item: {item.content_type.value}")
         sleep(0.2)
         try:
-            if item.content_type == ContentTypes.TEXT:
-                print("TEXT")
+            if item.content_type == ContentType.TEXT:
                 bot.send_message(
                     chat_id,
-                    item.content,
-                    parse_mode="MarkdownV2"
+                    item.text,
+                    entities=[e.to_dict() for e in item.entities],
                 )
-            elif item.content_type == ContentTypes.PHOTO:
-                print("PHOTO")
-                """
-                bot.send_sticker(
-                    chat_id,
-                    (item.file_name, item.file_data),
-                )
-                """
+            elif item.content_type == ContentType.PHOTO:
                 bot.send_photo(
                     chat_id,
                     (item.file_name, item.file_data),
-                    caption=item.caption,
-                    parse_mode="MarkdownV2"
+                    caption=item.caption_text or None,
+                    caption_entities=[e.to_dict() for e in item.caption_entities] or None,
                 )
-            elif item.content_type == ContentTypes.FILE:
-                print("FILE")
+            elif item.content_type == ContentType.FILE:
                 bot.send_document(
                     chat_id,
                     (item.file_name, item.file_data),
-                    caption=item.caption,
-                    parse_mode="MarkdownV2"
+                    caption=item.caption_text or None,
+                    caption_entities=[e.to_dict() for e in item.caption_entities] or None,
                 )
         except Exception as e:
             print(f"Error: {item}")
             raise e
 
 
-# Sync usage
-loop = asyncio.new_event_loop()
-result = loop.run_until_complete(
-    telegramify_markdown.telegramify(md)
-)
-print(f"Got {len(result)} items.")
-
-# Async usage
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(send_message())
+    asyncio.run(send_message())
