@@ -78,9 +78,9 @@ def _escape_latex(text: str) -> str:
             return match.group(0)
         converted = _latex_helper.convert(content)
         if is_block:
-            return f"$$${converted.strip()}$$$"
+            return f"$${converted.strip()}$$"
         else:
-            return f"$${converted.strip().strip(chr(10))}$$"
+            return f"${converted.strip().strip(chr(10))}$"
 
     lines = text.split("\n\n")
     processed = []
