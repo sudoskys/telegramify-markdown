@@ -4,14 +4,15 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-Convert Markdown to Telegram **plain text + [MessageEntity](https://core.telegram.org/bots/api#messageentity)** pairs.
+**Effortlessly convert raw Markdown to Telegram plain text
++ [MessageEntity](https://core.telegram.org/bots/api#messageentity) pairs.**
 
-No more MarkdownV2 escaping headaches. This library parses Markdown (including LLM output, GitHub READMEs, etc.) and
-produces `(text, entities)` tuples that can be sent directly via the Telegram Bot API — no `parse_mode` needed.
+Say goodbye to MarkdownV2 escaping headaches! This library parses Markdown (including LLM output, GitHub READMEs, etc.)
+and produces `(text, entities)` tuples that can be sent directly via the Telegram Bot API — no `parse_mode` needed.
 
-- Handles any format or length — long messages are automatically split at newline boundaries.
+- No matter the format or length, it can be easily handled!
 - Entity offsets are measured in UTF-16 code units, exactly as Telegram requires.
-- Supports LaTeX-to-Unicode conversion, expandable block quotes, Mermaid diagram rendering, and more.
+- We also support LaTeX-to-Unicode conversion, expandable block quotes, and Mermaid diagram rendering.
 - Built on [pyromark](https://github.com/monosans/pyromark) (Rust pulldown-cmark bindings) for speed and correctness.
 
 > [!NOTE]
@@ -21,62 +22,15 @@ produces `(text, entities)` tuples that can be sent directly via the Telegram Bo
 > **Currently in release candidate.** Install with `pip install telegramify-markdown --pre` to try it.
 > The default `pip install telegramify-markdown` (without `--pre`) still installs the stable 0.5.x version.
 
-## For AI Coding Assistants
+## 👀 Use case
 
-Copy this block into your AI assistant's context (e.g. `CLAUDE.md`, Cursor Rules, etc.) to get
-accurate code generation for telegramify-markdown:
+| convert() | convert() | telegramify() |
+|---|---|---|
+| ![result](.github/result-7.png) | ![result](.github/result-8.png) | ![result](.github/result-9.png) |
 
-<details>
-<summary>Click to expand context block</summary>
+## 🪄 Quick Start
 
-```markdown
-# telegramify-markdown integration guide
-
-## Install
-uv add telegramify-markdown --prerelease=allow  # or: pip install telegramify-markdown --pre
-
-## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
-
-### convert() — sync, single message
-from telegramify_markdown import convert
-text, entities = convert("**bold** and _italic_")
-bot.send_message(chat_id, text, entities=[e.to_dict() for e in entities])
-# Do NOT set parse_mode — entities replace it entirely.
-
-### telegramify() — async, auto-splits long text, extracts code blocks as files
-from telegramify_markdown import telegramify
-from telegramify_markdown.content import ContentType
-results = await telegramify(md, max_message_length=4090)
-for item in results:
-    if item.content_type == ContentType.TEXT:
-        bot.send_message(chat_id, item.text, entities=[e.to_dict() for e in item.entities])
-    elif item.content_type == ContentType.FILE:
-        bot.send_document(chat_id, (item.file_name, item.file_data))
-    elif item.content_type == ContentType.PHOTO:
-        bot.send_photo(chat_id, (item.file_name, item.file_data))
-
-### split_entities() — manual splitting for convert() output
-from telegramify_markdown import convert, split_entities
-text, entities = convert(long_md)
-for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
-    bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
-
-### Configuration
-from telegramify_markdown.config import get_runtime_config
-cfg = get_runtime_config()
-cfg.markdown_symbol.heading_level_1 = "📌"
-cfg.cite_expandable = True
-
-## Critical rules
-- entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string
-- NEVER set parse_mode when sending with entities — they are mutually exclusive
-- All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
-- Requires Python 3.10+
-```
-
-</details>
-
-## Install
+### Install
 
 > Requires **Python 3.10+**. Currently in release candidate — use the pre-release flag for your package manager.
 
@@ -98,11 +52,13 @@ poetry add telegramify-markdown --allow-prereleases
 poetry add "telegramify-markdown[mermaid]" --allow-prereleases
 ```
 
-## Quick Start
+### 🤔 What you want to do?
+
+- If you just want to send *static text* and don't want to worry about formatting → use **`convert()`**
+- If you are developing an *LLM application* or need to send potentially **super-long text** → use **`telegramify()`**
+- If you need to split `convert()` output manually → use **`split_entities()`**
 
 ### `convert()` — single message
-
-Convert Markdown to `(text, entities)` and send with any bot library:
 
 ```python
 from telebot import TeleBot
@@ -127,7 +83,7 @@ No `parse_mode` parameter — Telegram reads the entities directly.
 For LLM output or long documents, `telegramify()` splits text, extracts code blocks as files,
 and renders Mermaid diagrams as images:
 
-```python
+````python
 import asyncio
 from telebot import TeleBot
 from telegramify_markdown import telegramify
@@ -177,7 +133,7 @@ async def send():
             )
 
 asyncio.run(send())
-```
+````
 
 ### `split_entities()` — manual splitting
 
@@ -196,7 +152,7 @@ for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4
     )
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 Customize heading symbols, link symbols, and expandable citation behavior:
 
@@ -209,7 +165,7 @@ cfg.markdown_symbol.link = "🔗"
 cfg.cite_expandable = True  # Long quotes become expandable_blockquote
 ```
 
-## API Reference
+## 📖 API Reference
 
 ### `convert(markdown, *, latex_escape=True) -> tuple[str, list[MessageEntity]]`
 
@@ -267,7 +223,7 @@ class MessageEntity:
 
 Returns the length of a string in UTF-16 code units (what Telegram uses for offsets).
 
-## Supported Markdown Features
+## 🔨 Supported Markdown Features
 
 - [x] Headings (Levels 1-4, rendered as bold with emoji prefix)
 - [x] `**Bold**`, `*Italic*`, `~~Strikethrough~~`
@@ -283,12 +239,67 @@ Returns the length of a string in UTF-16 code units (what Telegram uses for offs
 - [x] LaTeX math `\(...\)` and `\[...\]` (converted to Unicode)
 - [x] Mermaid diagrams (rendered as images, requires `[mermaid]` extra)
 
-## Acknowledgement
+## 🤖 For AI Coding Assistants
+
+Copy this block into your AI assistant's context (e.g. `CLAUDE.md`, Cursor Rules, etc.) to get
+accurate code generation for telegramify-markdown:
+
+<details>
+<summary>Click to expand context block</summary>
+
+```markdown
+# telegramify-markdown integration guide
+
+## Install
+uv add telegramify-markdown --prerelease=allow  # or: pip install telegramify-markdown --pre
+
+## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
+
+### convert() — sync, single message
+from telegramify_markdown import convert
+text, entities = convert("**bold** and _italic_")
+bot.send_message(chat_id, text, entities=[e.to_dict() for e in entities])
+# Do NOT set parse_mode — entities replace it entirely.
+
+### telegramify() — async, auto-splits long text, extracts code blocks as files
+from telegramify_markdown import telegramify
+from telegramify_markdown.content import ContentType
+results = await telegramify(md, max_message_length=4090)
+for item in results:
+    if item.content_type == ContentType.TEXT:
+        bot.send_message(chat_id, item.text, entities=[e.to_dict() for e in item.entities])
+    elif item.content_type == ContentType.FILE:
+        bot.send_document(chat_id, (item.file_name, item.file_data))
+    elif item.content_type == ContentType.PHOTO:
+        bot.send_photo(chat_id, (item.file_name, item.file_data))
+
+### split_entities() — manual splitting for convert() output
+from telegramify_markdown import convert, split_entities
+text, entities = convert(long_md)
+for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
+    bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
+
+### Configuration
+from telegramify_markdown.config import get_runtime_config
+cfg = get_runtime_config()
+cfg.markdown_symbol.heading_level_1 = "📌"
+cfg.cite_expandable = True
+
+## Critical rules
+- entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string
+- NEVER set parse_mode when sending with entities — they are mutually exclusive
+- All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
+- Requires Python 3.10+
+```
+
+</details>
+
+## 🧸 Acknowledgement
 
 This library is inspired by [npm:telegramify-markdown](https://www.npmjs.com/package/telegramify-markdown).
 
 LaTeX escape is inspired by [latex2unicode](https://github.com/tomtung/latex2unicode) and @yym68686.
 
-## License
+## 📜 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
