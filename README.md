@@ -18,8 +18,8 @@ produces `(text, entities)` tuples that can be sent directly via the Telegram Bo
 > v1.0.0 is a breaking change from 0.x. The output is now `(str, list[MessageEntity])` instead of a MarkdownV2 string.
 > The old `markdownify()` and `standardize()` functions have been removed.
 >
-> **Currently in release candidate.** Install with `pip install telegramify-markdown==1.0.0rc2` to try it.
-> The default `pip install telegramify-markdown` still installs the stable 0.5.x version.
+> **Currently in release candidate.** Install with `pip install telegramify-markdown --pre` to try it.
+> The default `pip install telegramify-markdown` (without `--pre`) still installs the stable 0.5.x version.
 
 ## For AI Coding Assistants
 
@@ -33,7 +33,7 @@ accurate code generation for telegramify-markdown:
 # telegramify-markdown integration guide
 
 ## Install
-pip install telegramify-markdown
+uv add telegramify-markdown --prerelease=allow  # or: pip install telegramify-markdown --pre
 
 ## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
 
@@ -78,20 +78,25 @@ cfg.cite_expandable = True
 
 ## Install
 
-```bash
-pip install telegramify-markdown
-# Optional: Mermaid diagram rendering
-pip install telegramify-markdown[mermaid]
-```
-
-Or with PDM:
+> Requires **Python 3.10+**. Currently in release candidate — use the pre-release flag for your package manager.
 
 ```bash
-pdm add telegramify-markdown
-pdm add telegramify-markdown -G mermaid
-```
+# uv (recommended)
+uv add telegramify-markdown --prerelease=allow
+uv add "telegramify-markdown[mermaid]" --prerelease=allow
 
-Requires **Python 3.10+**.
+# pip
+pip install telegramify-markdown --pre
+pip install "telegramify-markdown[mermaid]" --pre
+
+# PDM
+pdm add telegramify-markdown --prerelease
+pdm add "telegramify-markdown[mermaid]" --prerelease
+
+# Poetry
+poetry add telegramify-markdown --allow-prereleases
+poetry add "telegramify-markdown[mermaid]" --allow-prereleases
+```
 
 ## Quick Start
 
