@@ -1,0 +1,35 @@
+# telegramify-markdown
+
+> Python library that converts Markdown to Telegram plain text + MessageEntity pairs. Outputs (str, list[MessageEntity]) instead of MarkdownV2 strings — no escaping issues. Built on pyromark (Rust pulldown-cmark). Supports LaTeX→Unicode, Mermaid diagrams, expandable blockquotes, and automatic message splitting.
+
+telegramify-markdown parses Markdown (including LLM output) and produces plain text paired with
+Telegram Bot API MessageEntity objects. Entity offsets use UTF-16 code units as Telegram requires.
+Messages exceeding the 4096-character limit are automatically split at newline boundaries with
+entities clipped correctly across chunks.
+
+Key design decisions:
+- No `parse_mode` needed when sending — entities are passed directly to the Bot API.
+- Code blocks are extracted as File objects; Mermaid blocks are rendered as Photo objects.
+- The library is bot-framework agnostic. `MessageEntity.to_dict()` produces a dict compatible
+  with any Telegram bot library (pyTelegramBotAPI, python-telegram-bot, aiogram, etc.).
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/README.md): Install guide, quick start examples, full API reference
+- [AGENTS.md](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/AGENTS.md): Architecture overview, project map, coding standards
+
+## API
+
+- [Public API entry point — __init__.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/__init__.py): `convert()` (sync) and `telegramify()` (async)
+- [Core converter — converter.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/converter.py): EventWalker state machine, pyromark event→entity mapping
+- [MessageEntity — entity.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/entity.py): MessageEntity dataclass, `utf16_len()`, `split_entities()`
+- [Async pipeline — pipeline.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/pipeline.py): Message splitting, code block extraction, Mermaid rendering
+- [Output types — content.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/content.py): Text, File, Photo, ContentType, ContentTrace
+- [Configuration — config.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/config.py): Symbol customization, RenderConfig singleton
+
+## Optional
+
+- [Mermaid rendering — mermaid.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/mermaid.py): Requires `pip install telegramify-markdown[mermaid]`
+- [LaTeX escape](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/latex_escape/): LaTeX math→Unicode symbol conversion
+- [Test suite](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/tests/): Unit tests and Telegram server integration tests
+- [Playground scripts](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/playground/): Working examples that send messages to a real Telegram bot

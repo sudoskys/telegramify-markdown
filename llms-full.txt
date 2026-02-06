@@ -1,0 +1,234 @@
+# telegramify-markdown
+
+> Python library that converts Markdown to Telegram plain text + MessageEntity pairs. Outputs (str, list[MessageEntity]) instead of MarkdownV2 strings — no escaping issues. Built on pyromark (Rust pulldown-cmark). Supports LaTeX→Unicode, Mermaid diagrams, expandable blockquotes, and automatic message splitting.
+
+## Install
+
+```bash
+pip install telegramify-markdown
+pip install telegramify-markdown[mermaid]  # optional: Mermaid diagram rendering
+```
+
+Requires Python 3.10+. Core dependency: pyromark >=0.7.0.
+
+## Usage: convert() — single message (sync)
+
+```python
+from telebot import TeleBot
+from telegramify_markdown import convert
+
+bot = TeleBot("TOKEN")
+text, entities = convert("**Bold**, _italic_, and `code`.")
+bot.send_message(chat_id, text, entities=[e.to_dict() for e in entities])
+```
+
+No `parse_mode` parameter needed — Telegram reads the entities directly.
+
+## Usage: telegramify() — long messages, code files, diagrams (async)
+
+```python
+import asyncio
+from telebot import TeleBot
+from telegramify_markdown import telegramify
+from telegramify_markdown.content import ContentType
+
+bot = TeleBot("TOKEN")
+
+async def send():
+    results = await telegramify(markdown_text, max_message_length=4090)
+    for item in results:
+        if item.content_type == ContentType.TEXT:
+            bot.send_message(chat_id, item.text, entities=[e.to_dict() for e in item.entities])
+        elif item.content_type == ContentType.PHOTO:
+            bot.send_photo(chat_id, (item.file_name, item.file_data),
+                caption=item.caption_text or None,
+                caption_entities=[e.to_dict() for e in item.caption_entities] or None)
+        elif item.content_type == ContentType.FILE:
+            bot.send_document(chat_id, (item.file_name, item.file_data),
+                caption=item.caption_text or None,
+                caption_entities=[e.to_dict() for e in item.caption_entities] or None)
+
+asyncio.run(send())
+```
+
+## Usage: split_entities() — manual splitting
+
+```python
+from telegramify_markdown import convert, split_entities
+
+text, entities = convert(long_markdown)
+for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
+    bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
+```
+
+## Configuration
+
+```python
+from telegramify_markdown.config import get_runtime_config
+
+cfg = get_runtime_config()
+cfg.markdown_symbol.heading_level_1 = "📌"
+cfg.markdown_symbol.heading_level_2 = "✏️"
+cfg.markdown_symbol.heading_level_3 = "📚"
+cfg.markdown_symbol.heading_level_4 = "🔖"
+cfg.markdown_symbol.link = "🔗"
+cfg.markdown_symbol.image = "🖼"
+cfg.markdown_symbol.task_completed = "✅"
+cfg.markdown_symbol.task_uncompleted = "☑️"
+cfg.cite_expandable = True  # long quotes become expandable_blockquote
+```
+
+## API Reference
+
+### convert(markdown, *, latex_escape=True, config=None) -> tuple[str, list[MessageEntity]]
+
+Synchronous. Converts a Markdown string to plain text and a list of MessageEntity objects.
+
+Parameters:
+- markdown (str): Raw Markdown text.
+- latex_escape (bool, default True): Convert LaTeX \(...\) and \[...\] to Unicode symbols.
+- config (RenderConfig | None): Custom config; uses global singleton if None.
+
+Returns (text, entities):
+- text (str): Plain text with formatting removed.
+- entities (list[MessageEntity]): Telegram MessageEntity objects with UTF-16 offsets.
+
+### telegramify(content, *, max_message_length=4096, latex_escape=True) -> list[Text | File | Photo]
+
+Async. Full pipeline: converts Markdown, splits long messages, extracts code blocks as File
+objects, renders Mermaid diagrams as Photo objects.
+
+Parameters:
+- content (str): Raw Markdown text.
+- max_message_length (int, default 4096): Maximum UTF-16 code units per text message.
+- latex_escape (bool, default True): Convert LaTeX to Unicode.
+
+Returns an ordered list of Text, File, or Photo objects preserving the original document order.
+
+### split_entities(text, entities, max_utf16_len) -> list[tuple[str, list[MessageEntity]]]
+
+Split (text, entities) into chunks not exceeding max_utf16_len UTF-16 code units.
+Tries to split at newline boundaries. Entities spanning a split point are clipped into both chunks.
+
+### utf16_len(text) -> int
+
+Return the length of text measured in UTF-16 code units. Characters outside the BMP
+(codepoint > 0xFFFF) take 2 UTF-16 code units; all others take 1.
+
+### MessageEntity
+
+```python
+@dataclasses.dataclass(slots=True)
+class MessageEntity:
+    type: str           # "bold", "italic", "code", "pre", "text_link", "strikethrough",
+                        # "spoiler", "blockquote", "expandable_blockquote", "custom_emoji"
+    offset: int         # Start position in UTF-16 code units
+    length: int         # Length in UTF-16 code units
+    url: str | None     # For "text_link" entities
+    language: str | None       # For "pre" entities (code block language)
+    custom_emoji_id: str | None  # For "custom_emoji" entities
+
+    def to_dict(self) -> dict:
+        """Convert to a dict compatible with any Telegram bot library."""
+```
+
+### Content types (telegramify_markdown.content)
+
+```python
+class ContentType(Enum):
+    TEXT = "text"
+    FILE = "file"
+    PHOTO = "photo"
+
+@dataclasses.dataclass
+class Text:
+    text: str                          # Plain text content
+    entities: list[MessageEntity]      # Formatting entities
+    content_trace: ContentTrace        # Source metadata
+    content_type: ContentType = ContentType.TEXT
+
+@dataclasses.dataclass
+class File:
+    file_name: str                     # e.g. "code.py", "mermaid.txt"
+    file_data: bytes                   # File content as bytes
+    content_trace: ContentTrace
+    caption_text: str = ""
+    caption_entities: list[MessageEntity] = field(default_factory=list)
+    content_type: ContentType = ContentType.FILE
+
+@dataclasses.dataclass
+class Photo:
+    file_name: str                     # e.g. "mermaid.webp"
+    file_data: bytes                   # Image data
+    content_trace: ContentTrace
+    caption_text: str = ""
+    caption_entities: list[MessageEntity] = field(default_factory=list)
+    content_type: ContentType = ContentType.PHOTO
+```
+
+## Architecture
+
+```
+Input Markdown
+    │
+    ├─ Preprocessing: ||spoiler|| → <tg-spoiler>
+    ├─ Preprocessing: LaTeX → Unicode (latex_escape/)
+    │
+    ▼
+pyromark.events(text, options)  → event stream
+    │
+    ▼
+EventWalker state machine (converter.py)
+    ├─ Maintains text_buffer + utf16_offset
+    ├─ entity_stack: Start → push, End → pop and emit MessageEntity
+    ├─ Identifies segments: text / code_block / mermaid
+    │
+    ▼
+convert() → (str, list[MessageEntity])         # sync API
+telegramify() → list[Text | File | Photo]      # async pipeline
+```
+
+## Pyromark event → Telegram entity mapping
+
+| pyromark event | Telegram entity type | Extra fields |
+|---|---|---|
+| Strong | bold | — |
+| Emphasis | italic | — |
+| Strikethrough | strikethrough | — |
+| Link{dest_url} | text_link | url=dest_url |
+| Image{dest_url} (tg://emoji) | custom_emoji | custom_emoji_id |
+| Image{dest_url} (other) | text_link | url=dest_url |
+| Code (leaf) | code | — |
+| CodeBlock{Fenced(lang)} | pre | language=lang |
+| BlockQuote | blockquote / expandable_blockquote | based on length + config |
+| InlineHtml <tg-spoiler> | spoiler | — (from preprocessing) |
+| Heading | bold | text prefixed with emoji symbol |
+| Table | pre | formatted as aligned plain text |
+| List / Item | (no entity) | plain text: ⦁ / 1. prefix |
+| TaskListMarker | (no entity) | plain text: ✅ / ☑️ prefix |
+| Rule | (no entity) | inserts ———————— |
+
+## Supported Markdown features
+
+- Headings (Levels 1-4, bold with emoji prefix)
+- **Bold**, *Italic*, ~~Strikethrough~~
+- ||Spoiler||
+- [Links](url) and ![Images](url)
+- Telegram custom emoji ![emoji](tg://emoji?id=...)
+- Inline code and fenced code blocks
+- Block quotes > (with expandable citation support)
+- Tables (rendered as monospace pre blocks)
+- Ordered and unordered lists
+- Task lists - [x] / - [ ]
+- Horizontal rules ---
+- LaTeX math \(...\) and \[...\] (converted to Unicode)
+- Mermaid diagrams (rendered as images, requires [mermaid] extra)
+
+## Important notes for LLM agents
+
+- Always pass entities as `list[dict]` via `[e.to_dict() for e in entities]`, NOT as a JSON string.
+- Do NOT set `parse_mode` when sending with entities — they are mutually exclusive.
+- `telegramify()` is async and must be awaited. `convert()` is synchronous.
+- Entity offsets are in UTF-16 code units, not Python string indices. Use `utf16_len()` to measure.
+- The library is bot-framework agnostic. `MessageEntity.to_dict()` works with pyTelegramBotAPI, python-telegram-bot, aiogram, and any library that accepts entity dicts.
+- For messages that might exceed 4096 characters, use `telegramify()` (auto-splits) or `split_entities()` (manual split).

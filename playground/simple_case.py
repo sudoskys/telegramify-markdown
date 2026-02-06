@@ -1,10 +1,10 @@
 import telegramify_markdown
-from telegramify_markdown.customize import get_runtime_config
+from telegramify_markdown.config import get_runtime_config
 
 markdown_symbol = get_runtime_config().markdown_symbol
+markdown_symbol.heading_level_1 = "📌"
+markdown_symbol.link = "🔗"
 
-markdown_symbol.head_level_1 = "📌"  # If you want, Customizing the head level 1 symbol
-markdown_symbol.link = "🔗"  # If you want, Customizing the link symbol
 md = """*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
 ~strikethrough~
 """
@@ -43,5 +43,8 @@ emoji = r"""
 [](tg://emoji?id=5368324170671202286)
 """
 
-converted = telegramify_markdown.markdownify(emoji)
-print(converted)
+text, entities = telegramify_markdown.convert(emoji)
+print(text)
+print(f"\n--- {len(entities)} entities ---")
+for e in entities:
+    print(e.to_dict())

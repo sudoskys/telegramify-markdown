@@ -162,3 +162,11 @@ cython_debug/
 .idea/
 /src/telegramify_markdown/latex_escape/_deprecated_symbols.py
 .DS_Store
+
+# Local AI assistant config
+.claude/
+.agents/
+CLAUDE.md
+
+# Playground reference repos
+playground/pyromark-main/

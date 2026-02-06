@@ -1,4 +1,8 @@
+import os
 import textwrap
+
+from dotenv import load_dotenv
+from telebot import TeleBot
 
 import telegramify_markdown
 
@@ -29,24 +33,20 @@ Average Rate of Change:
 
 """)
 
-# export Markdown to Telegram MarkdownV2 style.
-converted = telegramify_markdown.markdownify(
-    md,
-    max_line_length=None,  # If you want to change the max line length for links, images, set it to the desired value.
-    normalize_whitespace=False,
-    latex_escape=False,
-)
-print(converted)
-# export Markdown to Telegram MarkdownV2 style.
-from dotenv import load_dotenv
-import os
-from telebot import TeleBot
+# Convert to (text, entities)
+text, entities = telegramify_markdown.convert(md, latex_escape=False)
+print(text)
+print(f"\n--- {len(entities)} entities ---")
+for e in entities:
+    print(e.to_dict())
+
+# Send to telegram
 load_dotenv()
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
 chat_id = os.getenv("TELEGRAM_CHAT_ID", None)
 bot = TeleBot(telegram_bot_token)
 bot.send_message(
     chat_id,
-    converted,
-    parse_mode="MarkdownV2"  # IMPORTANT: Need Send in MarkdownV2 Mode.
+    text,
+    entities=[e.to_dict() for e in entities],
 )
