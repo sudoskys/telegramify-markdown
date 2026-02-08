@@ -163,6 +163,12 @@ cfg = get_runtime_config()
 cfg.markdown_symbol.heading_level_1 = "📌"
 cfg.markdown_symbol.link = "🔗"
 cfg.cite_expandable = True  # Long quotes become expandable_blockquote
+
+# For clean output without emoji heading prefixes:
+# cfg.markdown_symbol.heading_level_1 = ""
+# cfg.markdown_symbol.heading_level_2 = ""
+# cfg.markdown_symbol.heading_level_3 = ""
+# cfg.markdown_symbol.heading_level_4 = ""
 ```
 
 ## 📖 API Reference
@@ -225,7 +231,7 @@ Returns the length of a string in UTF-16 code units (what Telegram uses for offs
 
 ## 🔨 Supported Markdown Features
 
-- [x] Headings (Levels 1-4, rendered as bold with emoji prefix)
+- [x] Headings (Levels 1-6: H1-H2 bold+underline, H3-H4 bold, H5-H6 italic; H1-H4 with emoji prefix)
 - [x] `**Bold**`, `*Italic*`, `~~Strikethrough~~`
 - [x] `||Spoiler||`
 - [x] `[Links](url)` and `![Images](url)`
