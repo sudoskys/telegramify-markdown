@@ -228,7 +228,7 @@ class RuleTest(unittest.TestCase):
 class ParagraphSpacingTest(unittest.TestCase):
     def test_paragraphs_separated(self):
         text, entities = convert("para1\n\npara2", latex_escape=False)
-        self.assertIn("para1\npara2", text)
+        self.assertIn("para1\n\npara2", text)
 
     def test_heading_then_paragraph(self):
         text, entities = convert("# Title\n\nContent", latex_escape=False)

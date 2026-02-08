@@ -131,6 +131,17 @@ class _TextBuffer:
     def py_offset(self) -> int:
         return sum(len(p) for p in self._parts)
 
+    def trailing_newline_count(self) -> int:
+        """Count trailing newline characters in the buffer."""
+        count = 0
+        for part in reversed(self._parts):
+            for ch in reversed(part):
+                if ch == "\n":
+                    count += 1
+                else:
+                    return count
+        return count
+
     def get_text(self) -> str:
         return "".join(self._parts)
 
@@ -643,9 +654,12 @@ class EventWalker:
         )
 
     def _ensure_block_spacing(self) -> None:
-        """Write a newline separator between blocks if we're not at the start."""
+        """Ensure a blank line (\\n\\n) between blocks, avoiding excess newlines."""
         if self._block_count > 0:
-            self._buf.write("\n")
+            trailing = self._buf.trailing_newline_count()
+            needed = 2 - trailing
+            if needed > 0:
+                self._buf.write("\n" * needed)
 
 
 # --- Public API ---------------------------------------------------------------
