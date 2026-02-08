@@ -552,7 +552,8 @@ class EventWalker:
         self._item_started = True
 
     def _on_end_item(self) -> None:
-        self._buf.write("\n")
+        if self._buf.trailing_newline_count() == 0:
+            self._buf.write("\n")
         self._item_started = False
 
     def _on_end_list(self) -> None:
