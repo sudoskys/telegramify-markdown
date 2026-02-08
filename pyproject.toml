@@ -1,6 +1,6 @@
 [project]
 name = "telegramify-markdown"
-version = "1.0.0rc3"
+version = "1.0.0rc4"
 description = "Convert Markdown to Telegram plain text + MessageEntity pairs"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },

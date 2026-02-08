@@ -117,19 +117,36 @@ class CodeBlockTest(unittest.TestCase):
 class HeadingTest(unittest.TestCase):
     def test_h1(self):
         text, entities = convert("# Title", latex_escape=False)
-        bold = _find_entity(entities, "bold")
-        self.assertIsNotNone(bold)
-        self.assertIn("Title", _extract_entity_text(text, bold))
-        # Should have emoji prefix
         self.assertIn("📌", text)
+        self.assertIsNotNone(_find_entity(entities, "bold"))
+        self.assertIsNotNone(_find_entity(entities, "underline"))
 
     def test_h2(self):
         text, entities = convert("## Subtitle", latex_escape=False)
         self.assertIn("✏", text)
+        self.assertIsNotNone(_find_entity(entities, "bold"))
+        self.assertIsNotNone(_find_entity(entities, "underline"))
 
     def test_h3(self):
         text, entities = convert("### Section", latex_escape=False)
         self.assertIn("📚", text)
+        self.assertIsNotNone(_find_entity(entities, "bold"))
+        self.assertIsNone(_find_entity(entities, "underline"))
+
+    def test_h4(self):
+        text, entities = convert("#### Sub", latex_escape=False)
+        self.assertIn("🔖", text)
+        self.assertIsNotNone(_find_entity(entities, "bold"))
+
+    def test_h5_italic_no_emoji(self):
+        text, entities = convert("##### H5", latex_escape=False)
+        self.assertTrue(text.startswith("H5"))
+        self.assertIsNotNone(_find_entity(entities, "italic"))
+
+    def test_h6_italic_no_emoji(self):
+        text, entities = convert("###### H6", latex_escape=False)
+        self.assertTrue(text.startswith("H6"))
+        self.assertIsNotNone(_find_entity(entities, "italic"))
 
 
 class LinkTest(unittest.TestCase):
@@ -665,6 +682,42 @@ print("hello")
         self.assertIn("item 1", text)
         self.assertIn("A quote", text)
         self.assertIn('print("hello")', text)
+
+
+class NestedListFormattingTest(unittest.TestCase):
+    def test_nested_items_on_separate_lines(self):
+        text, _ = convert("- parent\n    - child", latex_escape=False)
+        self.assertIn("parent\n", text)  # parent 以换行结尾
+        self.assertNotIn("parent  ⦁", text)  # 不在同一行
+
+    def test_deeply_nested_items(self):
+        text, _ = convert("- a\n    - b\n        - c", latex_escape=False)
+        lines = text.strip().split("\n")
+        self.assertEqual(len(lines), 3)  # 每项独占一行
+
+    def test_ordered_with_nested_unordered(self):
+        text, _ = convert("1. step\n    - detail", latex_escape=False)
+        self.assertIn("step\n", text)
+
+
+class LooseListParagraphTest(unittest.TestCase):
+    def test_multi_paragraph_item(self):
+        text, _ = convert("- para1\n\n  para2", latex_escape=False)
+        self.assertIn("para1\n", text)
+        self.assertIn("para2", text)
+        self.assertNotIn("para1para2", text)  # 不粘连
+
+
+class TaskListMarkerTest(unittest.TestCase):
+    def test_no_redundant_bullet(self):
+        text, _ = convert("- [ ] todo", latex_escape=False)
+        self.assertNotIn("⦁", text)  # 无 bullet
+        self.assertIn("☑", text)     # task marker 存在
+
+    def test_completed_task(self):
+        text, _ = convert("- [x] done", latex_escape=False)
+        self.assertNotIn("⦁", text)
+        self.assertIn("✅", text)
 
 
 if __name__ == "__main__":
