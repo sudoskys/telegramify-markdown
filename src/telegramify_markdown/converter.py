@@ -142,6 +142,14 @@ class _TextBuffer:
                     return count
         return count
 
+    def pop_last(self) -> str:
+        """移除并返回最后写入的部分。用于替换刚写入的 bullet 前缀。"""
+        if self._parts:
+            part = self._parts.pop()
+            self._utf16_offset -= utf16_len(part)
+            return part
+        return ""
+
     def get_text(self) -> str:
         return "".join(self._parts)
 
@@ -174,6 +182,7 @@ class EventWalker:
         self._block_count: int = 0  # For paragraph spacing
         self._list_stack: list[int | None] = []  # None=unordered, int=next_number
         self._item_started: bool = False
+        self._item_indent: str = ""  # 当前 item 的缩进，用于 task list marker 替换
 
         # Table state
         self._in_table: bool = False
@@ -190,6 +199,7 @@ class EventWalker:
 
         # Heading state
         self._in_heading: bool = False
+        self._heading_entities: list[str] = []
 
         # Blockquote state
         self._blockquote_scopes: list[_EntityScope] = []
@@ -395,11 +405,21 @@ class EventWalker:
             if checked
             else self._config.markdown_symbol.task_uncompleted
         )
-        # Replace the bullet that was just written for the item
-        # The item prefix was already written in _on_start_item, so we just add the symbol
-        self._buf.write(f"{symbol} ")
+        # 移除 _on_start_item 刚写入的 bullet 前缀（"⦁ " 或 "N. "），替换为 task marker
+        self._buf.pop_last()
+        self._buf.write(f"{self._item_indent}{symbol} ")
 
     # -- Heading ---------------------------------------------------------------
+
+    # entity 样式递降：H1-H2 bold+underline, H3-H4 bold, H5-H6 italic
+    _HEADING_ENTITIES: dict[str, list[str]] = {
+        "H1": ["bold", "underline"],
+        "H2": ["bold", "underline"],
+        "H3": ["bold"],
+        "H4": ["bold"],
+        "H5": ["italic"],
+        "H6": ["italic"],
+    }
 
     def _on_start_heading(self, heading_data: dict) -> None:
         self._ensure_block_spacing()
@@ -409,15 +429,21 @@ class EventWalker:
             "H2": self._config.markdown_symbol.heading_level_2,
             "H3": self._config.markdown_symbol.heading_level_3,
             "H4": self._config.markdown_symbol.heading_level_4,
+            "H5": self._config.markdown_symbol.heading_level_5,
+            "H6": self._config.markdown_symbol.heading_level_6,
         }
         prefix = symbol_map.get(level, "")
         if prefix:
             self._buf.write(prefix + " ")
-        self._push_entity("bold")
+        self._heading_entities = self._HEADING_ENTITIES.get(level, ["bold"])
+        for etype in self._heading_entities:
+            self._push_entity(etype)
         self._in_heading = True
 
     def _on_end_heading(self) -> None:
-        self._pop_entity("bold")
+        for etype in reversed(self._heading_entities):
+            self._pop_entity(etype)
+        self._heading_entities = []
         self._in_heading = False
         self._block_count += 1
 
@@ -430,6 +456,9 @@ class EventWalker:
     def _on_end_paragraph(self) -> None:
         if not self._list_stack:
             self._block_count += 1
+        elif self._buf.trailing_newline_count() == 0:
+            # loose list 中段落结束时写入换行，避免多段落粘连
+            self._buf.write("\n")
 
     # -- Code block ------------------------------------------------------------
 
@@ -542,6 +571,11 @@ class EventWalker:
         indent = "  " * (depth - 1) if depth > 1 else ""
         current_list = self._list_stack[-1] if self._list_stack else None
 
+        # 嵌套列表：父项文本后没有换行时，插入换行确保子项独占一行
+        if self._buf.py_offset > 0 and self._buf.trailing_newline_count() == 0:
+            self._buf.write("\n")
+
+        self._item_indent = indent
         if current_list is not None:
             # Ordered list
             self._buf.write(f"{indent}{current_list}. ")

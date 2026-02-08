@@ -16,6 +16,8 @@ class Symbol:
         self.heading_level_2: str = "\N{PENCIL}"                    # ✏️
         self.heading_level_3: str = "\N{BOOKS}"                     # 📚
         self.heading_level_4: str = "\N{BOOKMARK}"                  # 🔖
+        self.heading_level_5: str = ""
+        self.heading_level_6: str = ""
         self.image: str = "\N{FRAME WITH PICTURE}"               # 🖼
         self.link: str = "\N{LINK SYMBOL}"                       # 🔗
         self.task_completed: str = "\N{WHITE HEAVY CHECK MARK}"  # ✅
