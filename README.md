@@ -57,6 +57,7 @@ poetry add "telegramify-markdown[mermaid]" --allow-prereleases
 - If you just want to send *static text* and don't want to worry about formatting → use **`convert()`**
 - If you are developing an *LLM application* or need to send potentially **super-long text** → use **`telegramify()`**
 - If you need to split `convert()` output manually → use **`split_entities()`**
+- If your API only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`entities_to_markdownv2()`**
 
 ### `convert()` — single message
 
@@ -152,6 +153,22 @@ for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4
     )
 ```
 
+### `entities_to_markdownv2()` — reverse conversion to MarkdownV2
+
+If your middleware API does not support the `entities` parameter and only accepts `parse_mode="MarkdownV2"`,
+you can convert the `(text, entities)` output back to a MarkdownV2 string:
+
+```python
+from telegramify_markdown import convert, entities_to_markdownv2
+
+text, entities = convert("**Bold** and `code`")
+mdv2 = entities_to_markdownv2(text, entities)
+
+bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
+```
+
+This handles all MarkdownV2 escaping rules correctly (different escaping for normal text, code/pre blocks, and URLs).
+
 ## ⚙️ Configuration
 
 Customize heading symbols, link symbols, and expandable citation behavior:
@@ -201,6 +218,16 @@ Returns an ordered list of `Text`, `File`, or `Photo` objects.
 
 Split text + entities into chunks within a UTF-16 length limit. Splits at newline boundaries;
 entities spanning a split point are clipped into both chunks.
+
+### `entities_to_markdownv2(text, entities=None) -> str`
+
+Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct escaping.
+Useful when your API only supports `parse_mode="MarkdownV2"` and cannot pass entities directly.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `text` | `str` | required | Plain text content |
+| `entities` | `list[MessageEntity] \| None` | `None` | Entity list (UTF-16 offsets) |
 
 ### `MessageEntity`
 
@@ -284,6 +311,13 @@ from telegramify_markdown import convert, split_entities
 text, entities = convert(long_md)
 for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
     bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
+
+### entities_to_markdownv2() — reverse to MarkdownV2 string
+from telegramify_markdown import convert, entities_to_markdownv2
+text, entities = convert("**Bold** and `code`")
+mdv2 = entities_to_markdownv2(text, entities)
+bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
+# Use when your API only supports parse_mode, not entities parameter.
 
 ### Configuration
 from telegramify_markdown.config import get_runtime_config

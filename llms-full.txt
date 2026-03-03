@@ -110,6 +110,19 @@ Returns an ordered list of Text, File, or Photo objects preserving the original 
 Split (text, entities) into chunks not exceeding max_utf16_len UTF-16 code units.
 Tries to split at newline boundaries. Entities spanning a split point are clipped into both chunks.
 
+### entities_to_markdownv2(text, entities=None) -> str
+
+Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct
+escaping. Handles different escaping rules for normal text (20 special chars), code/pre blocks
+(only ` and \), and URLs (only ) and \). Supports nested entities, blockquotes, expandable
+blockquotes, and all standard Telegram entity types.
+
+Use when your API only supports `parse_mode="MarkdownV2"` and cannot pass entities directly.
+
+Parameters:
+- text (str): Plain text content.
+- entities (list[MessageEntity] | None): Entity list with UTF-16 offsets.
+
 ### utf16_len(text) -> int
 
 Return the length of text measured in UTF-16 code units. Characters outside the BMP
@@ -228,7 +241,8 @@ telegramify() → list[Text | File | Photo]      # async pipeline
 
 - Always pass entities as `list[dict]` via `[e.to_dict() for e in entities]`, NOT as a JSON string.
 - Do NOT set `parse_mode` when sending with entities — they are mutually exclusive.
-- `telegramify()` is async and must be awaited. `convert()` is synchronous.
+- If your API only supports `parse_mode`, use `entities_to_markdownv2()` to convert entities back to MarkdownV2.
+- `telegramify()` is async and must be awaited. `convert()` and `entities_to_markdownv2()` are synchronous.
 - Entity offsets are in UTF-16 code units, not Python string indices. Use `utf16_len()` to measure.
 - The library is bot-framework agnostic. `MessageEntity.to_dict()` works with pyTelegramBotAPI, python-telegram-bot, aiogram, and any library that accepts entity dicts.
 - For messages that might exceed 4096 characters, use `telegramify()` (auto-splits) or `split_entities()` (manual split).

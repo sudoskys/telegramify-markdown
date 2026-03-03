@@ -20,9 +20,10 @@ Key design decisions:
 
 ## API
 
-- [Public API entry point — __init__.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/__init__.py): `convert()` (sync) and `telegramify()` (async)
+- [Public API entry point — __init__.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/__init__.py): `convert()` (sync), `telegramify()` (async), `entities_to_markdownv2()` (reverse)
 - [Core converter — converter.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/converter.py): EventWalker state machine, pyromark event→entity mapping
 - [MessageEntity — entity.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/entity.py): MessageEntity dataclass, `utf16_len()`, `split_entities()`
+- [MarkdownV2 reverse converter — mdv2.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/mdv2.py): `entities_to_markdownv2()` for APIs that only support parse_mode
 - [Async pipeline — pipeline.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/pipeline.py): Message splitting, code block extraction, Mermaid rendering
 - [Output types — content.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/content.py): Text, File, Photo, ContentType, ContentTrace
 - [Configuration — config.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/config.py): Symbol customization, RenderConfig singleton

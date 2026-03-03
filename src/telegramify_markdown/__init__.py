@@ -8,10 +8,12 @@ from telegramify_markdown import config
 from telegramify_markdown.converter import convert as convert
 from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 from telegramify_markdown.content import ContentType, ContentTrace, File, Photo, Text
+from telegramify_markdown.mdv2 import entities_to_markdownv2
 
 __all__ = [
     "convert",
     "telegramify",
+    "entities_to_markdownv2",
     "config",
     "MessageEntity",
     "utf16_len",

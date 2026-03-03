@@ -59,6 +59,7 @@ EventWalker 状态机 (converter.py)
     │
     ▼
 convert() → (str, list[MessageEntity])         # 同步 API
+entities_to_markdownv2() → str                 # 同步，反向转 MarkdownV2
 telegramify() → list[Text | File | Photo]      # 异步，含拆分/文件提取/mermaid
 ```
 
@@ -66,9 +67,10 @@ telegramify() → list[Text | File | Photo]      # 异步，含拆分/文件提�
 
 ```
 src/telegramify_markdown/
-  __init__.py          # 公共 API: convert(), telegramify()
+  __init__.py          # 公共 API: convert(), telegramify(), entities_to_markdownv2()
   converter.py         # 核心: pyromark 事件 → (text, entities)，EventWalker 状态机
   entity.py            # MessageEntity dataclass, utf16_len(), split_entities()
+  mdv2.py              # 反向转换: (text, entities) → MarkdownV2 字符串
   pipeline.py          # 异步管道: 拆分、代码块提取、mermaid 渲染
   config.py            # 用户配置: Symbol, RenderConfig (singleton)
   content.py           # 输出类型: Text, File, Photo, ContentType, ContentTrace
@@ -81,6 +83,7 @@ src/telegramify_markdown/
 tests/
   test_entity.py       # MessageEntity, utf16_len, split_entities 测试
   test_converter.py    # convert() 转换器测试
+  test_mdv2.py         # entities_to_markdownv2() 反向转换测试
   test_pipeline.py     # telegramify pipeline 测试
   test_server.py       # Telegram Bot API 集成测试（需 TELEGRAM_BOT_TOKEN）
   test_word_count.py   # 字数统计测试
