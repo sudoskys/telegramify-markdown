@@ -16,11 +16,8 @@ and produces `(text, entities)` tuples that can be sent directly via the Telegra
 - Built on [pyromark](https://github.com/monosans/pyromark) (Rust pulldown-cmark bindings) for speed and correctness.
 
 > [!NOTE]
-> v1.0.0 is a breaking change from 0.x. The output is now `(str, list[MessageEntity])` instead of a MarkdownV2 string.
-> The old `markdownify()` and `standardize()` functions have been removed.
->
-> **Currently in release candidate.** Install with `pip install telegramify-markdown --pre` to try it.
-> The default `pip install telegramify-markdown` (without `--pre`) still installs the stable 0.5.x version.
+> v1.0.0 introduces a new entity-based output: `convert()` returns `(str, list[MessageEntity])`.
+> The 0.x functions `markdownify()` and `standardize()` are still available and return MarkdownV2 strings as before.
 
 ## 👀 Use case
 
@@ -32,24 +29,24 @@ and produces `(text, entities)` tuples that can be sent directly via the Telegra
 
 ### Install
 
-> Requires **Python 3.10+**. Currently in release candidate — use the pre-release flag for your package manager.
+> Requires **Python 3.10+**.
 
 ```bash
 # uv (recommended)
-uv add telegramify-markdown --prerelease=allow
-uv add "telegramify-markdown[mermaid]" --prerelease=allow
+uv add telegramify-markdown
+uv add "telegramify-markdown[mermaid]"
 
 # pip
-pip install telegramify-markdown --pre
-pip install "telegramify-markdown[mermaid]" --pre
+pip install telegramify-markdown
+pip install "telegramify-markdown[mermaid]"
 
 # PDM
-pdm add telegramify-markdown --prerelease
-pdm add "telegramify-markdown[mermaid]" --prerelease
+pdm add telegramify-markdown
+pdm add "telegramify-markdown[mermaid]"
 
 # Poetry
-poetry add telegramify-markdown --allow-prereleases
-poetry add "telegramify-markdown[mermaid]" --allow-prereleases
+poetry add telegramify-markdown
+poetry add "telegramify-markdown[mermaid]"
 ```
 
 ### 🤔 What you want to do?
@@ -57,7 +54,8 @@ poetry add "telegramify-markdown[mermaid]" --allow-prereleases
 - If you just want to send *static text* and don't want to worry about formatting → use **`convert()`**
 - If you are developing an *LLM application* or need to send potentially **super-long text** → use **`telegramify()`**
 - If you need to split `convert()` output manually → use **`split_entities()`**
-- If your API only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`entities_to_markdownv2()`**
+- If your middleware only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`markdownify()`**
+- If you need finer control over the reverse conversion → use **`entities_to_markdownv2()`**
 
 ### `convert()` — single message
 
@@ -153,10 +151,23 @@ for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4
     )
 ```
 
+### `markdownify()` — direct Markdown to MarkdownV2
+
+If your middleware only supports `parse_mode="MarkdownV2"` and cannot pass entities, use `markdownify()` for a
+one-step conversion:
+
+```python
+from telegramify_markdown import markdownify
+
+mdv2 = markdownify("**Bold** and `code`")
+bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
+```
+
+`standardize()` is an alias for `markdownify()`, kept for 0.x compatibility.
+
 ### `entities_to_markdownv2()` — reverse conversion to MarkdownV2
 
-If your middleware API does not support the `entities` parameter and only accepts `parse_mode="MarkdownV2"`,
-you can convert the `(text, entities)` output back to a MarkdownV2 string:
+If you already have `(text, entities)` from `convert()` and need a MarkdownV2 string:
 
 ```python
 from telegramify_markdown import convert, entities_to_markdownv2
@@ -219,10 +230,24 @@ Returns an ordered list of `Text`, `File`, or `Photo` objects.
 Split text + entities into chunks within a UTF-16 length limit. Splits at newline boundaries;
 entities spanning a split point are clipped into both chunks.
 
+### `markdownify(content, *, latex_escape=True) -> str`
+
+Synchronous. Converts Markdown directly to a Telegram MarkdownV2 string.
+Equivalent to `entities_to_markdownv2(*convert(content))`.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `content` | `str` | required | Raw Markdown text |
+| `latex_escape` | `bool` | `True` | Convert LaTeX to Unicode |
+
+### `standardize(content, *, latex_escape=True) -> str`
+
+Alias for `markdownify()`, kept for 0.x compatibility.
+
 ### `entities_to_markdownv2(text, entities=None) -> str`
 
 Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct escaping.
-Useful when your API only supports `parse_mode="MarkdownV2"` and cannot pass entities directly.
+Useful when you already have `(text, entities)` from `convert()` and need a MarkdownV2 string.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -284,7 +309,7 @@ accurate code generation for telegramify-markdown:
 # telegramify-markdown integration guide
 
 ## Install
-uv add telegramify-markdown --prerelease=allow  # or: pip install telegramify-markdown --pre
+uv add telegramify-markdown  # or: pip install telegramify-markdown
 
 ## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
 
@@ -312,12 +337,18 @@ text, entities = convert(long_md)
 for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
     bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
 
-### entities_to_markdownv2() — reverse to MarkdownV2 string
+### markdownify() — direct Markdown to MarkdownV2 string
+from telegramify_markdown import markdownify
+mdv2 = markdownify("**Bold** and `code`")
+bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
+# Use when your middleware only supports parse_mode, not entities parameter.
+# standardize() is an alias for markdownify().
+
+### entities_to_markdownv2() — reverse convert() output to MarkdownV2
 from telegramify_markdown import convert, entities_to_markdownv2
 text, entities = convert("**Bold** and `code`")
 mdv2 = entities_to_markdownv2(text, entities)
 bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
-# Use when your API only supports parse_mode, not entities parameter.
 
 ### Configuration
 from telegramify_markdown.config import get_runtime_config
