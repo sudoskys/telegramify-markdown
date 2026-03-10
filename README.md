@@ -4,8 +4,8 @@
 [![PyPI version](https://badge.fury.io/py/telegramify-markdown.svg)](https://badge.fury.io/py/telegramify-markdown)
 [![Downloads](https://pepy.tech/badge/telegramify-markdown)](https://pepy.tech/project/telegramify-markdown)
 
-**Effortlessly convert raw Markdown to Telegram plain text
-+ [MessageEntity](https://core.telegram.org/bots/api#messageentity) pairs.**
+**Effortlessly convert raw Markdown to Telegram plain text +
+[MessageEntity](https://core.telegram.org/bots/api#messageentity) pairs.**
 
 Say goodbye to MarkdownV2 escaping headaches! This library parses Markdown (including LLM output, GitHub READMEs, etc.)
 and produces `(text, entities)` tuples that can be sent directly via the Telegram Bot API — no `parse_mode` needed.
