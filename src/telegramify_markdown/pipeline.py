@@ -108,6 +108,8 @@ async def process_markdown(
     *,
     max_message_length: int = 4096,
     latex_escape: bool = True,
+    render_mermaid: bool = True,
+    min_file_lines: int = 1,
 ) -> list[Text | File | Photo]:
     """Full async pipeline: markdown → list of sendable content pieces.
 
@@ -125,7 +127,17 @@ async def process_markdown(
     result: list[Text | File | Photo] = []
 
     # Build a sorted list of code/mermaid segments
-    special_segments = [s for s in segments if s.kind in ("code_block", "mermaid")]
+    special_segments = [
+        s
+        for s in segments
+        if (
+            s.kind == "code_block"
+            and min_file_lines != 0
+            and len(full_text[s.text_start : s.text_end].split("\n")) >= min_file_lines
+        )
+        or (s.kind == "mermaid" and render_mermaid)
+    ]
+
     special_segments.sort(key=lambda s: s.text_start)
 
     # Walk through the text, interleaving text chunks with special segments

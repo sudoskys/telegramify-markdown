@@ -50,6 +50,8 @@ async def telegramify(
     max_message_length: int = 4096,
     max_word_count: int | None = None,
     latex_escape: bool = True,
+    render_mermaid: bool = True,
+    min_file_lines: int = 1,
 ) -> list[Union[Text, File, Photo]]:
     """Convert markdown to Telegram-ready content segments.
 
@@ -57,6 +59,8 @@ async def telegramify(
     :param max_message_length: Maximum UTF-16 code units per text message (Telegram limit is 4096).
     :param max_word_count: Deprecated alias for *max_message_length*. Will be removed in 2.0.
     :param latex_escape: Whether to convert LaTeX ``\\(...\\)`` and ``\\[...\\]`` to Unicode.
+    :param render_mermaid: Whether to render Mermaid diagrams as images.
+    :param min_file_lines: Minimum number of lines in a code block to be sent as a file instead of text. 0 means always send as text, 1 means always send as file.
     :return: Ordered list of Text, File, or Photo objects ready for the Telegram Bot API.
     """
     if max_word_count is not None:
@@ -74,4 +78,6 @@ async def telegramify(
         content,
         max_message_length=max_message_length,
         latex_escape=latex_escape,
+        render_mermaid=render_mermaid,
+        min_file_lines=min_file_lines,
     )

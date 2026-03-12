@@ -21,6 +21,25 @@ class ProcessMarkdownTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("py", file_result.file_name)
         self.assertIn(b"print('hello')", file_result.file_data)
 
+    async def test_code_block_as_text(self):
+        md = "Some text\n\n```python\nprint('hello')\n```\n\nMore text"
+        results = await process_markdown(md, min_file_lines=0)
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], Text)
+        self.assertIn("print('hello')", results[0].text)
+        self.assertEqual(len(results[0].entities), 1)
+        self.assertEqual(results[0].entities[0].type, "pre")
+        self.assertEqual(results[0].entities[0].language, "python")
+
+    async def test_code_block_min_lines(self):
+        md = "Some text\n\n```python\nprint('line1')\nprint('line2')\n```\n\nMore text"
+        results = await process_markdown(md, min_file_lines=3)
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], Text)
+        self.assertEqual(len(results[0].entities), 1)
+        self.assertEqual(results[0].entities[0].type, "pre")
+        self.assertEqual(results[0].entities[0].language, "python")
+
     async def test_text_around_code_block(self):
         md = "Before\n\n```python\ncode\n```\n\nAfter"
         results = await process_markdown(md)
@@ -71,6 +90,15 @@ class ProcessMarkdownTest(unittest.IsolatedAsyncioTestCase):
         results = await process_markdown(md)
         self.assertEqual(len(results), 1)
         self.assertIn(type(results[0]), (File, Photo))
+
+    async def test_mermaid_rendering_disabled(self):
+        md = "```mermaid\ngraph TD\nA-->B\n```"
+        results = await process_markdown(md, render_mermaid=False)
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], Text)
+        self.assertEqual(len(results[0].entities), 1)
+        self.assertEqual(results[0].entities[0].type, "pre")
+        self.assertEqual(results[0].entities[0].language, "mermaid")
 
 
 if __name__ == "__main__":
