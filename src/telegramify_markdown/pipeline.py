@@ -133,7 +133,7 @@ async def process_markdown(
         if (
             s.kind == "code_block"
             and min_file_lines != 0
-            and len(full_text[s.text_start : s.text_end].split("\n")) >= min_file_lines
+            and len(s.raw_code.split("\n")) >= min_file_lines
         )
         or (s.kind == "mermaid" and render_mermaid)
     ]
