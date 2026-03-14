@@ -108,14 +108,28 @@ async def process_markdown(
     *,
     max_message_length: int = 4096,
     latex_escape: bool = True,
+    render_mermaid: bool = True,
+    min_file_lines: int = 1,
 ) -> list[Text | File | Photo]:
     """Full async pipeline: markdown → list of sendable content pieces.
 
+    :param content: Raw markdown text.
+    :param max_message_length: Maximum UTF-16 code units per text message.
+    :param latex_escape: Whether to convert LaTeX to Unicode.
+    :param render_mermaid: Whether to render Mermaid diagrams as images.
+        When *False*, mermaid blocks remain inline as ``pre`` entities with
+        ``language="mermaid"``.
+    :param min_file_lines: Minimum line count for a code block to be extracted
+        as a separate file.  Set to ``0`` to disable file extraction entirely
+        (all code blocks stay inline as ``pre`` entities).
+
+    Pipeline steps:
+
     1. Convert markdown to (text, entities, segments) via converter
     2. Walk segments in order:
-       - mermaid → render as Photo (or File on failure)
-       - code_block → extract as File
-       - text regions → collect and split by max_message_length
+       - mermaid → render as Photo (or File on failure), unless *render_mermaid* is False
+       - code_block → extract as File if line count ≥ *min_file_lines*
+       - text regions → collect and split by *max_message_length*
     3. Return ordered list of Text | File | Photo
     """
     full_text, full_entities, segments = convert_with_segments(
@@ -124,8 +138,20 @@ async def process_markdown(
 
     result: list[Text | File | Photo] = []
 
-    # Build a sorted list of code/mermaid segments
-    special_segments = [s for s in segments if s.kind in ("code_block", "mermaid")]
+    # Build a sorted list of segments to extract (as File/Photo instead of inline text).
+    # - code_block: extract when min_file_lines > 0 and the block is long enough
+    # - mermaid: extract when render_mermaid is enabled
+    special_segments = [
+        s
+        for s in segments
+        if (
+            s.kind == "code_block"
+            and min_file_lines > 0
+            and len(s.raw_code.split("\n")) >= min_file_lines
+        )
+        or (s.kind == "mermaid" and render_mermaid)
+    ]
+
     special_segments.sort(key=lambda s: s.text_start)
 
     # Walk through the text, interleaving text chunks with special segments
