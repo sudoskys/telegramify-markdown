@@ -60,7 +60,11 @@ async def telegramify(
     :param max_word_count: Deprecated alias for *max_message_length*. Will be removed in 2.0.
     :param latex_escape: Whether to convert LaTeX ``\\(...\\)`` and ``\\[...\\]`` to Unicode.
     :param render_mermaid: Whether to render Mermaid diagrams as images.
-    :param min_file_lines: Minimum number of lines in a code block to be sent as a file instead of text. 0 means always send as text, 1 means always send as file.
+        When *False*, mermaid blocks remain inline as ``pre`` entities with
+        ``language="mermaid"``.
+    :param min_file_lines: Minimum line count for a code block to be extracted
+        as a separate file.  Set to ``0`` to disable file extraction entirely
+        (all code blocks stay inline as ``pre`` entities).
     :return: Ordered list of Text, File, or Photo objects ready for the Telegram Bot API.
     """
     if max_word_count is not None:
