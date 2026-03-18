@@ -91,6 +91,27 @@ class ProcessMarkdownTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(results), 1)
         self.assertIn(type(results[0]), (File, Photo))
 
+    async def test_mermaid_caption_uses_text_link(self):
+        """Mermaid Photo caption must use a text_link entity, not a bare URL.
+
+        Bare URLs can exceed Telegram's 1024 code-unit caption limit because
+        pako-encoded mermaid.live URLs grow with diagram complexity.
+        """
+        md = "```mermaid\ngraph TD\nA-->B\n```"
+        results = await process_markdown(md)
+        photos = [r for r in results if isinstance(r, Photo)]
+        if not photos:
+            self.skipTest("Mermaid rendering not available (missing aiohttp/Pillow)")
+        photo = photos[0]
+        # Caption 应该是短文本，不是裸 URL
+        self.assertNotIn("pako:", photo.caption_text)
+        self.assertLessEqual(len(photo.caption_text), 1024)
+        # 必须有 text_link entity 指向 mermaid.live
+        self.assertTrue(photo.caption_entities, "caption_entities should not be empty")
+        link_entity = photo.caption_entities[0]
+        self.assertEqual(link_entity.type, "text_link")
+        self.assertIn("mermaid.live", link_entity.url)
+
     async def test_mermaid_rendering_disabled(self):
         md = "```mermaid\ngraph TD\nA-->B\n```"
         results = await process_markdown(md, render_mermaid=False)

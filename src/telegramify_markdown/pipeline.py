@@ -261,12 +261,22 @@ async def _handle_mermaid(
 
         img_data, _caption_url = await render_mermaid(raw_code)
         edit_url = get_mermaid_live_url(raw_code)
+        # 用 text_link entity 避免长 URL 撑爆 caption 长度限制
+        caption = "Edit on mermaid.live"
         result.append(
             Photo(
                 file_name="mermaid.webp",
                 file_data=img_data.read(),
                 content_trace=ContentTrace(source_type="mermaid"),
-                caption_text=f"Edit: {edit_url}",
+                caption_text=caption,
+                caption_entities=[
+                    MessageEntity(
+                        type="text_link",
+                        offset=0,
+                        length=utf16_len(caption),
+                        url=edit_url,
+                    )
+                ],
             )
         )
     except Exception as e:
