@@ -182,7 +182,7 @@ This handles all MarkdownV2 escaping rules correctly (different escaping for nor
 
 ## ⚙️ Configuration
 
-Customize heading symbols, link symbols, and expandable citation behavior:
+Customize heading symbols, link symbols, expandable citation behavior, and Mermaid rendering:
 
 ```python
 from telegramify_markdown.config import get_runtime_config
@@ -191,6 +191,10 @@ cfg = get_runtime_config()
 cfg.markdown_symbol.heading_level_1 = "📌"
 cfg.markdown_symbol.link = "🔗"
 cfg.cite_expandable = True  # Long quotes become expandable_blockquote
+cfg.mermaid.width = 1280
+cfg.mermaid.scale = 2
+cfg.mermaid.theme = "default"
+cfg.mermaid.image_type = "webp"
 
 # For clean output without emoji heading prefixes:
 # cfg.markdown_symbol.heading_level_1 = ""
@@ -198,6 +202,8 @@ cfg.cite_expandable = True  # Long quotes become expandable_blockquote
 # cfg.markdown_symbol.heading_level_3 = ""
 # cfg.markdown_symbol.heading_level_4 = ""
 ```
+
+`telegramify()` picks up Mermaid settings from the runtime config. The default Mermaid width is `1000`.
 
 ## 📖 API Reference
 
@@ -355,6 +361,7 @@ from telegramify_markdown.config import get_runtime_config
 cfg = get_runtime_config()
 cfg.markdown_symbol.heading_level_1 = "📌"
 cfg.cite_expandable = True
+cfg.mermaid.width = 1280
 
 ## Critical rules
 - entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string

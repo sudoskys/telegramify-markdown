@@ -6,7 +6,9 @@ import zlib
 from io import BytesIO
 from typing import TYPE_CHECKING
 from typing import Union, Tuple
+from urllib.parse import urlencode
 
+from telegramify_markdown.config import get_runtime_config
 from telegramify_markdown.logger import logger
 
 if TYPE_CHECKING:
@@ -116,7 +118,7 @@ def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None) -> 
     :return: The pako URL
     """
     if mermaid_config is None:
-        mermaid_config = MermaidConfig()
+        mermaid_config = MermaidConfig(theme=get_runtime_config().mermaid.theme)
     graph_data = {
         "code": graph_markdown,
         "mermaid": mermaid_config.__dict__
@@ -125,6 +127,19 @@ def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None) -> 
     compressed_data = compress_to_deflate(json_bytes)
     base64_encoded = safe_base64_encode(compressed_data)
     return f"pako:{base64_encoded.decode('ascii')}"
+
+
+def _build_mermaid_ink_query() -> str:
+    """Build Mermaid Ink query parameters from runtime config."""
+    mermaid_config = get_runtime_config().mermaid
+    return urlencode(
+        {
+            "theme": mermaid_config.theme,
+            "width": mermaid_config.width,
+            "scale": mermaid_config.scale,
+            "type": mermaid_config.image_type,
+        }
+    )
 
 
 def b64_mermaid_url(diagram: str) -> str:
@@ -136,7 +151,7 @@ def b64_mermaid_url(diagram: str) -> str:
     :return: Link
     """
     diagram_encoded = safe_base64_encode(diagram.encode('utf8')).decode('ascii')
-    return f'https://mermaid.ink/img/{diagram_encoded}?theme=default&width=500&scale=2'
+    return f'https://mermaid.ink/img/{diagram_encoded}?{_build_mermaid_ink_query()}'
 
 
 def get_mermaid_live_url(graph_markdown: str) -> str:
@@ -156,7 +171,7 @@ def get_mermaid_ink_url(graph_markdown: str) -> str:
     :param graph_markdown: The Mermaid graph Markdown
     :return: Link
     """
-    return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?theme=default&width=500&scale=2&type=webp'
+    return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?{_build_mermaid_ink_query()}'
 
 
 async def render_mermaid(
@@ -184,5 +199,3 @@ def support_mermaid():
     except ImportError:
         return False
     return True
-
-

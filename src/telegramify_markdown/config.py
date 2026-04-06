@@ -24,15 +24,28 @@ class Symbol:
         self.task_uncompleted: str = "\N{BALLOT BOX WITH CHECK}" # ☑️
 
 
+class Mermaid:
+    def __init__(self):
+        self.theme: str = "default"
+        self.width: int = 1000
+        self.scale: int = 2
+        self.image_type: str = "webp"
+
+
 @singleton
 class RenderConfig:
     def __init__(self):
         self._markdown_symbol = Symbol()
+        self._mermaid = Mermaid()
         self._cite_expandable = True
 
     @property
     def markdown_symbol(self) -> Symbol:
         return self._markdown_symbol
+
+    @property
+    def mermaid(self) -> Mermaid:
+        return self._mermaid
 
     @property
     def cite_expandable(self) -> bool:
