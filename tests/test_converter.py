@@ -189,6 +189,25 @@ class BlockquoteTest(unittest.TestCase):
         bq = _find_entity(entities, "expandable_blockquote")
         self.assertIsNotNone(bq)
 
+    def test_blockquote_before_code_block_without_blank_line(self):
+        md = ">Text example 1\n```py\nSecond line example\nThird line example\n```"
+        text, entities = convert(md, latex_escape=False)
+        self.assertEqual(text, "Text example 1\nSecond line example\nThird line example")
+        bq = _find_entity(entities, "blockquote")
+        pre = _find_entity(entities, "pre")
+        self.assertIsNotNone(bq)
+        self.assertIsNotNone(pre)
+        self.assertEqual(bq.length, 14)
+        self.assertEqual(pre.offset, 15)
+
+    def test_blockquote_before_code_block_with_blank_line(self):
+        md = ">Text example 1\n\n```py\nSecond line example\nThird line example\n```"
+        text, entities = convert(md, latex_escape=False)
+        self.assertEqual(text, "Text example 1\n\nSecond line example\nThird line example")
+        pre = _find_entity(entities, "pre")
+        self.assertIsNotNone(pre)
+        self.assertEqual(pre.offset, 16)
+
 
 class TableTest(unittest.TestCase):
     def test_simple_table(self):

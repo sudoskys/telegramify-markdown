@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from telegramify_markdown.entity import MessageEntity
+from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 
 # MarkdownV2 普通文本需要转义的 20 个字符
 _MDV2_ESCAPE_CHARS = frozenset("_*[]()~`>#+-=|{}.!\\")
@@ -240,6 +240,52 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
         parts.append("||")
 
     return "".join(parts)
+
+
+def split_markdownv2(
+    text: str,
+    entities: list[MessageEntity] | None = None,
+    max_utf16_len: int = 4096,
+) -> list[str]:
+    """Split text/entities into MarkdownV2 strings that fit Telegram's length limit.
+
+    ``split_entities()`` limits the plain text length. MarkdownV2 adds escapes and
+    formatting markers, so a plain-text chunk near 4096 code units can still become
+    too long after ``entities_to_markdownv2()``. This helper splits by the rendered
+    MarkdownV2 length instead.
+    """
+    if max_utf16_len <= 0:
+        raise ValueError("max_utf16_len must be greater than 0")
+    if not text:
+        return []
+
+    pending = split_entities(text, list(entities or []), max_utf16_len)
+    chunks: list[str] = []
+
+    while pending:
+        chunk_text, chunk_entities = pending.pop(0)
+        rendered = entities_to_markdownv2(chunk_text, chunk_entities)
+        if utf16_len(rendered) <= max_utf16_len:
+            chunks.append(rendered)
+            continue
+
+        plain_len = utf16_len(chunk_text)
+        if plain_len <= 1:
+            raise ValueError(
+                "A single text unit renders longer than max_utf16_len in MarkdownV2"
+            )
+
+        sub_limit = max(1, plain_len // 2)
+        sub_chunks = split_entities(chunk_text, chunk_entities, sub_limit)
+        if len(sub_chunks) == 1:
+            sub_limit = max(1, plain_len - 1)
+            sub_chunks = split_entities(chunk_text, chunk_entities, sub_limit)
+        if len(sub_chunks) == 1:
+            raise ValueError("Unable to split MarkdownV2 output within max_utf16_len")
+
+        pending = sub_chunks + pending
+
+    return chunks
 
 
 def _get_open_tag(ent: MessageEntity) -> str:

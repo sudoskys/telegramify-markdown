@@ -55,6 +55,7 @@ poetry add "telegramify-markdown[mermaid]"
 - If you are developing an *LLM application* or need to send potentially **super-long text** → use **`telegramify()`**
 - If you need to split `convert()` output manually → use **`split_entities()`**
 - If your middleware only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`markdownify()`**
+- If you need to split long MarkdownV2 output safely → use **`split_markdownv2()`**
 - If you need finer control over the reverse conversion → use **`entities_to_markdownv2()`**
 
 ### `convert()` — single message
@@ -165,6 +166,19 @@ bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
 
 `standardize()` is an alias for `markdownify()`, kept for 0.x compatibility.
 
+### `split_markdownv2()` — split MarkdownV2 safely
+
+If your middleware only supports `parse_mode="MarkdownV2"`, split by the rendered MarkdownV2 length, not only by the plain text length:
+
+```python
+from telegramify_markdown import convert, split_markdownv2
+
+text, entities = convert(long_markdown)
+
+for mdv2 in split_markdownv2(text, entities, max_utf16_len=4096):
+    bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
+```
+
 ### `entities_to_markdownv2()` — reverse conversion to MarkdownV2
 
 If you already have `(text, entities)` from `convert()` and need a MarkdownV2 string:
@@ -260,6 +274,11 @@ Useful when you already have `(text, entities)` from `convert()` and need a Mark
 | `text` | `str` | required | Plain text content |
 | `entities` | `list[MessageEntity] \| None` | `None` | Entity list (UTF-16 offsets) |
 
+### `split_markdownv2(text, entities=None, max_utf16_len=4096) -> list[str]`
+
+Split text + entities into Telegram MarkdownV2 strings within a rendered UTF-16 length limit.
+Use this instead of `split_entities()` when sending with `parse_mode="MarkdownV2"`.
+
 ### `MessageEntity`
 
 ```python
@@ -349,6 +368,12 @@ mdv2 = markdownify("**Bold** and `code`")
 bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
 # Use when your middleware only supports parse_mode, not entities parameter.
 # standardize() is an alias for markdownify().
+
+### split_markdownv2() — split rendered MarkdownV2 output
+from telegramify_markdown import convert, split_markdownv2
+text, entities = convert(long_md)
+for mdv2 in split_markdownv2(text, entities, max_utf16_len=4096):
+    bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
 
 ### entities_to_markdownv2() — reverse convert() output to MarkdownV2
 from telegramify_markdown import convert, entities_to_markdownv2

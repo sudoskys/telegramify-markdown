@@ -1,5 +1,6 @@
 """tests for entities_to_markdownv2"""
 
+import pathlib
 import unittest
 
 from telegramify_markdown.entity import MessageEntity, utf16_len
@@ -8,7 +9,10 @@ from telegramify_markdown.mdv2 import (
     _escape_markdownv2,
     _escape_url,
     entities_to_markdownv2,
+    split_markdownv2,
 )
+
+TESTS_DIR = pathlib.Path(__file__).parent
 
 
 # ── 第一层：基础转义 ──
@@ -258,6 +262,26 @@ class NoEntitiesTest(unittest.TestCase):
         self.assertEqual(result, "hello")
 
 
+class SplitMarkdownV2Test(unittest.TestCase):
+    def test_split_respects_rendered_limit_after_escaping(self):
+        text = ("a.b! " * 30).strip()
+        chunks = split_markdownv2(text, [], max_utf16_len=20)
+        self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertLessEqual(utf16_len(chunk), 20)
+        self.assertEqual("".join(chunks), entities_to_markdownv2(text, []))
+
+    def test_split_exp2_respects_telegram_limit(self):
+        from telegramify_markdown import convert
+
+        md = (TESTS_DIR / "exp2.md").read_text(encoding="utf-8")
+        text, entities = convert(md)
+        chunks = split_markdownv2(text, entities, max_utf16_len=4096)
+        self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertLessEqual(utf16_len(chunk), 4096)
+
+
 class EmptyTextTest(unittest.TestCase):
     def test_empty_text(self):
         result = entities_to_markdownv2("", [])
@@ -295,6 +319,26 @@ class RoundtripTest(unittest.TestCase):
         result = entities_to_markdownv2(text, entities)
         self.assertIn("[", result)
         self.assertIn("https://example.com", result)
+
+    def test_markdownify_blockquote_before_code_block_without_blank_line(self):
+        from telegramify_markdown import markdownify
+
+        md = ">Text example 1\n```py\nSecond line example\nThird line example\n```"
+        result = markdownify(md, latex_escape=False)
+        self.assertEqual(
+            result,
+            ">Text example 1\n```py\nSecond line example\nThird line example\n```",
+        )
+
+    def test_markdownify_blockquote_before_code_block_with_blank_line(self):
+        from telegramify_markdown import markdownify
+
+        md = ">Text example 1\n\n```py\nSecond line example\nThird line example\n```"
+        result = markdownify(md, latex_escape=False)
+        self.assertEqual(
+            result,
+            ">Text example 1\n\n```py\nSecond line example\nThird line example\n```",
+        )
 
 
 class SpecialCharInEntityTest(unittest.TestCase):
