@@ -175,25 +175,21 @@ class TelegramMarkdownV2ServerTest(unittest.TestCase):
 
     def test_mdv2_exp1(self):
         """convert(exp1.md) → entities_to_markdownv2 的输出通过 Telegram MarkdownV2 验证。"""
-        from telegramify_markdown import convert, entities_to_markdownv2, split_entities
+        from telegramify_markdown import convert, split_markdownv2
 
         md = (TESTS_DIR / "exp1.md").read_text(encoding="utf-8")
         text, entities = convert(md)
-        chunks = split_entities(text, entities, 4096)
-        for chunk_text, chunk_entities in chunks:
-            mdv2 = entities_to_markdownv2(chunk_text, chunk_entities)
+        for mdv2 in split_markdownv2(text, entities, 4096):
             result = _send_mdv2(self.bot, self.chat_id, mdv2)
             self.assertTrue(result, f"MarkdownV2 rejected by Telegram:\n{mdv2[:200]}")
 
     def test_mdv2_exp2(self):
         """convert(exp2.md) → entities_to_markdownv2 的输出通过 Telegram MarkdownV2 验证。"""
-        from telegramify_markdown import convert, entities_to_markdownv2, split_entities
+        from telegramify_markdown import convert, split_markdownv2
 
         md = (TESTS_DIR / "exp2.md").read_text(encoding="utf-8")
         text, entities = convert(md)
-        chunks = split_entities(text, entities, 4096)
-        for chunk_text, chunk_entities in chunks:
-            mdv2 = entities_to_markdownv2(chunk_text, chunk_entities)
+        for mdv2 in split_markdownv2(text, entities, 4096):
             result = _send_mdv2(self.bot, self.chat_id, mdv2)
             self.assertTrue(result, f"MarkdownV2 rejected by Telegram:\n{mdv2[:200]}")
 

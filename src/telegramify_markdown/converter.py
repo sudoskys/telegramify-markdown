@@ -171,15 +171,17 @@ class _EntityScope:
 class EventWalker:
     """Walks pyromark events and produces (text, entities, segments)."""
 
-    def __init__(self, config: RenderConfig) -> None:
+    def __init__(self, config: RenderConfig, source_markdown: str) -> None:
         self._buf = _TextBuffer()
         self._entity_stack: list[_EntityScope] = []
         self._entities: list[MessageEntity] = []
         self._segments: list[Segment] = []
         self._config = config
+        self._source_bytes = source_markdown.encode("utf-8")
 
         # Block-level state
         self._block_count: int = 0  # For paragraph spacing
+        self._last_block_end_source: int | None = None
         self._list_stack: list[int | None] = []  # None=unordered, int=next_number
         self._item_started: bool = False
         self._item_indent: str = ""  # 当前 item 的缩进，用于 task list marker 替换
@@ -196,6 +198,7 @@ class EventWalker:
         self._in_code_block: bool = False
         self._code_block_lang: str = ""
         self._code_block_parts: list[str] = []
+        self._code_block_start_source: int | None = None
 
         # Heading state
         self._in_heading: bool = False
@@ -218,22 +221,30 @@ class EventWalker:
     # -- Dispatch --------------------------------------------------------------
 
     def _handle_event(self, event) -> None:
+        source_range = None
+        if (
+            isinstance(event, tuple)
+            and len(event) == 2
+            and isinstance(event[1], dict)
+        ):
+            event, source_range = event
+
         if isinstance(event, str):
             if event == "SoftBreak":
                 self._on_soft_break()
             elif event == "HardBreak":
                 self._on_hard_break()
             elif event == "Rule":
-                self._on_rule()
+                self._on_rule(source_range)
             return
 
         if not isinstance(event, dict):
             return
 
         if "Start" in event:
-            self._on_start(event["Start"])
+            self._on_start(event["Start"], source_range)
         elif "End" in event:
-            self._on_end(event["End"])
+            self._on_end(event["End"], source_range)
         elif "Text" in event:
             self._on_text(event["Text"])
         elif "Code" in event:
@@ -241,7 +252,7 @@ class EventWalker:
         elif "InlineMath" in event:
             self._on_inline_math(event["InlineMath"])
         elif "DisplayMath" in event:
-            self._on_display_math(event["DisplayMath"])
+            self._on_display_math(event["DisplayMath"], source_range)
         elif "InlineHtml" in event:
             self._on_inline_html(event["InlineHtml"])
         elif "Html" in event:
@@ -253,7 +264,8 @@ class EventWalker:
 
     # -- Start events ----------------------------------------------------------
 
-    def _on_start(self, tag) -> None:
+    def _on_start(self, tag, source_range: dict[str, int] | None = None) -> None:
+        source_start = self._source_start(source_range)
         if tag == "Strong":
             self._push_entity("bold")
         elif tag == "Emphasis":
@@ -261,7 +273,7 @@ class EventWalker:
         elif tag == "Strikethrough":
             self._push_entity("strikethrough")
         elif tag == "Paragraph":
-            self._on_start_paragraph()
+            self._on_start_paragraph(source_start)
         elif tag == "Item":
             self._on_start_item()
         elif tag == "TableHead":
@@ -275,25 +287,26 @@ class EventWalker:
             pass
         elif isinstance(tag, dict):
             if "Heading" in tag:
-                self._on_start_heading(tag["Heading"])
+                self._on_start_heading(tag["Heading"], source_start)
             elif "CodeBlock" in tag:
-                self._on_start_code_block(tag["CodeBlock"])
+                self._on_start_code_block(tag["CodeBlock"], source_start)
             elif "BlockQuote" in tag:
-                self._on_start_blockquote()
+                self._on_start_blockquote(source_start)
             elif "Link" in tag:
                 self._on_start_link(tag["Link"])
             elif "Image" in tag:
                 self._on_start_image(tag["Image"])
             elif "List" in tag:
-                self._on_start_list(tag["List"])
+                self._on_start_list(tag["List"], source_start)
             elif "Table" in tag:
-                self._on_start_table(tag["Table"])
+                self._on_start_table(tag["Table"], source_start)
             elif "FootnoteDefinition" in tag:
-                self._ensure_block_spacing()
+                self._ensure_block_spacing(source_start)
 
     # -- End events ------------------------------------------------------------
 
-    def _on_end(self, tag) -> None:
+    def _on_end(self, tag, source_range: dict[str, int] | None = None) -> None:
+        source_end = self._source_end(source_range)
         if tag == "Strong":
             self._pop_entity("bold")
         elif tag == "Emphasis":
@@ -301,13 +314,13 @@ class EventWalker:
         elif tag == "Strikethrough":
             self._pop_entity("strikethrough")
         elif tag == "Paragraph":
-            self._on_end_paragraph()
+            self._on_end_paragraph(source_end)
         elif tag == "Item":
             self._on_end_item()
         elif tag == "CodeBlock":
-            self._on_end_code_block()
+            self._on_end_code_block(source_end)
         elif tag == "Table":
-            self._on_end_table()
+            self._on_end_table(source_end)
         elif tag == "TableCell":
             self._on_end_table_cell()
         elif tag == "TableRow":
@@ -322,11 +335,11 @@ class EventWalker:
             pass
         elif isinstance(tag, dict):
             if "Heading" in tag:
-                self._on_end_heading()
+                self._on_end_heading(source_end)
             elif "BlockQuote" in tag:
-                self._on_end_blockquote()
+                self._on_end_blockquote(source_end)
             elif "List" in tag:
-                self._on_end_list()
+                self._on_end_list(source_end)
 
     # -- Inline events ---------------------------------------------------------
 
@@ -354,10 +367,10 @@ class EventWalker:
             return
         self._buf.write("\n")
 
-    def _on_rule(self) -> None:
-        self._ensure_block_spacing()
+    def _on_rule(self, source_range: dict[str, int] | None = None) -> None:
+        self._ensure_block_spacing(self._source_start(source_range))
         self._buf.write("————————")
-        self._block_count += 1
+        self._mark_block_end(self._source_end(source_range))
 
     def _on_inline_code(self, code: str) -> None:
         if self._in_table_cell:
@@ -379,17 +392,17 @@ class EventWalker:
         if length > 0:
             self._entities.append(MessageEntity(type="code", offset=start, length=length))
 
-    def _on_display_math(self, math: str) -> None:
+    def _on_display_math(self, math: str, source_range: dict[str, int] | None = None) -> None:
         converted = math
         if _contains_latex_symbols(math):
             converted = _latex_helper.convert(math).strip()
-        self._ensure_block_spacing()
+        self._ensure_block_spacing(self._source_start(source_range))
         start = self._buf.utf16_offset
         self._buf.write(converted)
         length = self._buf.utf16_offset - start
         if length > 0:
             self._entities.append(MessageEntity(type="pre", offset=start, length=length))
-        self._block_count += 1
+        self._mark_block_end(self._source_end(source_range))
 
     def _on_inline_html(self, html: str) -> None:
         tag = html.strip().lower()
@@ -421,8 +434,10 @@ class EventWalker:
         "H6": ["italic"],
     }
 
-    def _on_start_heading(self, heading_data: dict) -> None:
-        self._ensure_block_spacing()
+    def _on_start_heading(
+        self, heading_data: dict, source_start: int | None = None
+    ) -> None:
+        self._ensure_block_spacing(source_start)
         level = heading_data["level"]
         symbol_map = {
             "H1": self._config.markdown_symbol.heading_level_1,
@@ -440,44 +455,45 @@ class EventWalker:
             self._push_entity(etype)
         self._in_heading = True
 
-    def _on_end_heading(self) -> None:
+    def _on_end_heading(self, source_end: int | None = None) -> None:
         for etype in reversed(self._heading_entities):
             self._pop_entity(etype)
         self._heading_entities = []
         self._in_heading = False
-        self._block_count += 1
+        self._mark_block_end(source_end)
 
     # -- Paragraph -------------------------------------------------------------
 
-    def _on_start_paragraph(self) -> None:
+    def _on_start_paragraph(self, source_start: int | None = None) -> None:
         if not self._list_stack:
-            self._ensure_block_spacing()
+            self._ensure_block_spacing(source_start)
 
-    def _on_end_paragraph(self) -> None:
+    def _on_end_paragraph(self, source_end: int | None = None) -> None:
         if not self._list_stack:
-            self._block_count += 1
+            self._mark_block_end(source_end)
         elif self._buf.trailing_newline_count() == 0:
             # loose list 中段落结束时写入换行，避免多段落粘连
             self._buf.write("\n")
 
     # -- Code block ------------------------------------------------------------
 
-    def _on_start_code_block(self, kind) -> None:
+    def _on_start_code_block(self, kind, source_start: int | None = None) -> None:
         self._in_code_block = True
         self._code_block_parts = []
+        self._code_block_start_source = source_start
         if isinstance(kind, dict) and "Fenced" in kind:
             self._code_block_lang = kind["Fenced"]
         else:
             self._code_block_lang = ""
 
-    def _on_end_code_block(self) -> None:
+    def _on_end_code_block(self, source_end: int | None = None) -> None:
         self._in_code_block = False
         raw_code = "".join(self._code_block_parts)
         # Strip single trailing newline (pulldown-cmark adds one)
         if raw_code.endswith("\n"):
             raw_code = raw_code[:-1]
 
-        self._ensure_block_spacing()
+        self._ensure_block_spacing(self._code_block_start_source)
 
         # Record segment
         seg_text_start = self._buf.py_offset
@@ -512,18 +528,19 @@ class EventWalker:
             )
         )
 
-        self._block_count += 1
+        self._mark_block_end(source_end)
         self._code_block_lang = ""
         self._code_block_parts = []
+        self._code_block_start_source = None
 
     # -- Blockquote ------------------------------------------------------------
 
-    def _on_start_blockquote(self) -> None:
-        self._ensure_block_spacing()
+    def _on_start_blockquote(self, source_start: int | None = None) -> None:
+        self._ensure_block_spacing(source_start)
         scope = _EntityScope("blockquote", self._buf.utf16_offset)
         self._blockquote_scopes.append(scope)
 
-    def _on_end_blockquote(self) -> None:
+    def _on_end_blockquote(self, source_end: int | None = None) -> None:
         if self._blockquote_scopes:
             scope = self._blockquote_scopes.pop()
             length = self._buf.utf16_offset - scope.start_offset
@@ -535,7 +552,7 @@ class EventWalker:
                         length=length,
                     )
                 )
-        self._block_count += 1
+        self._mark_block_end(source_end)
 
     # -- Links -----------------------------------------------------------------
 
@@ -561,9 +578,11 @@ class EventWalker:
 
     # -- Lists -----------------------------------------------------------------
 
-    def _on_start_list(self, start_number: int | None) -> None:
+    def _on_start_list(
+        self, start_number: int | None, source_start: int | None = None
+    ) -> None:
         if not self._list_stack:
-            self._ensure_block_spacing()
+            self._ensure_block_spacing(source_start)
         self._list_stack.append(start_number)
 
     def _on_start_item(self) -> None:
@@ -590,16 +609,16 @@ class EventWalker:
             self._buf.write("\n")
         self._item_started = False
 
-    def _on_end_list(self) -> None:
+    def _on_end_list(self, source_end: int | None = None) -> None:
         if self._list_stack:
             self._list_stack.pop()
         if not self._list_stack:
-            self._block_count += 1
+            self._mark_block_end(source_end)
 
     # -- Tables ----------------------------------------------------------------
 
-    def _on_start_table(self, alignments) -> None:
-        self._ensure_block_spacing()
+    def _on_start_table(self, alignments, source_start: int | None = None) -> None:
+        self._ensure_block_spacing(source_start)
         self._in_table = True
         self._table_alignments = alignments if isinstance(alignments, tuple) else ()
         self._table_rows = []
@@ -613,7 +632,7 @@ class EventWalker:
         self._table_rows.append(self._current_row)
         self._current_row = []
 
-    def _on_end_table(self) -> None:
+    def _on_end_table(self, source_end: int | None = None) -> None:
         self._in_table = False
         table_text = self._format_table(self._table_rows)
 
@@ -623,7 +642,7 @@ class EventWalker:
         if length > 0:
             self._entities.append(MessageEntity(type="pre", offset=start, length=length))
         self._table_rows = []
-        self._block_count += 1
+        self._mark_block_end(source_end)
 
     def _format_table(self, rows: list[list[str]]) -> str:
         if not rows:
@@ -688,11 +707,37 @@ class EventWalker:
             )
         )
 
-    def _ensure_block_spacing(self) -> None:
-        """Ensure a blank line (\\n\\n) between blocks, avoiding excess newlines."""
+    @staticmethod
+    def _source_start(source_range: dict[str, int] | None) -> int | None:
+        return source_range.get("start") if source_range else None
+
+    @staticmethod
+    def _source_end(source_range: dict[str, int] | None) -> int | None:
+        return source_range.get("end") if source_range else None
+
+    def _mark_block_end(self, source_end: int | None = None) -> None:
+        self._block_count += 1
+        if source_end is not None:
+            self._last_block_end_source = source_end
+
+    def _has_extra_blank_line(self, next_block_start: int) -> bool:
+        if self._last_block_end_source is None:
+            return False
+        if next_block_start <= self._last_block_end_source:
+            return False
+        gap = self._source_bytes[self._last_block_end_source:next_block_start]
+        return b"\n" in gap or b"\r" in gap
+
+    def _ensure_block_spacing(self, next_block_start: int | None = None) -> None:
+        """Ensure block spacing, preserving whether the source had an extra blank line."""
         if self._block_count > 0:
+            desired = 1
+            if next_block_start is None:
+                desired = 2
+            elif self._has_extra_blank_line(next_block_start):
+                desired = 2
             trailing = self._buf.trailing_newline_count()
-            needed = 2 - trailing
+            needed = desired - trailing
             if needed > 0:
                 self._buf.write("\n" * needed)
 
@@ -740,6 +785,6 @@ def convert_with_segments(
         preprocessed = _escape_latex(preprocessed)
     preprocessed = _preprocess_spoilers(preprocessed)
 
-    events = pyromark.events(preprocessed, options=STANDARD_OPTIONS)
-    walker = EventWalker(config)
+    events = pyromark.events_with_range(preprocessed, options=STANDARD_OPTIONS)
+    walker = EventWalker(config, preprocessed)
     return walker.walk(events)
