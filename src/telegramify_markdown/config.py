@@ -22,6 +22,7 @@ class Symbol:
         self.link: str = "\N{LINK SYMBOL}"                       # 🔗
         self.task_completed: str = "\N{WHITE HEAVY CHECK MARK}"  # ✅
         self.task_uncompleted: str = "\N{BALLOT BOX WITH CHECK}" # ☑️
+        self.horizontal_rule: str = "————————"
 
 
 class Mermaid:
