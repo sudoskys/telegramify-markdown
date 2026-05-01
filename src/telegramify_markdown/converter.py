@@ -369,7 +369,7 @@ class EventWalker:
 
     def _on_rule(self, source_range: dict[str, int] | None = None) -> None:
         self._ensure_block_spacing(self._source_start(source_range))
-        self._buf.write("————————")
+        self._buf.write(self._config.markdown_symbol.horizontal_rule)
         self._mark_block_end(self._source_end(source_range))
 
     def _on_inline_code(self, code: str) -> None:
