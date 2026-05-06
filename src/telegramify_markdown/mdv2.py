@@ -144,6 +144,7 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
 
     # 追踪当前活跃的 code/pre entity
     active_code_entities: set[int] = set()
+    previous_event_closed_pre = False
 
     # 构建结果
     parts: list[str] = []
@@ -179,6 +180,18 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
         if line_start < len(segment):
             parts.append(escape_fn(segment[line_start:]))
 
+    def _emit_text_between(start_py: int, end_py: int, after_pre: bool) -> None:
+        """输出两个事件边界之间的普通文本。"""
+        segment = text[start_py:end_py]
+        seg_start_py = start_py
+        if after_pre and segment.startswith("\n\n"):
+            # pre 的关闭 fence 已经以换行结束；文本边界再出现双换行时，
+            # 只需要保留一个分隔，避免 MarkdownV2 多渲染一行。
+            segment = segment[1:]
+            seg_start_py += 1
+        if segment:
+            _emit_segment(segment, seg_start_py)
+
     def _emit_tag(tag: str, pos_py: int) -> None:
         """输出标记字符串，处理 tag 中的 \\n（如 pre 的 ```\\n）。
 
@@ -206,13 +219,15 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
 
         # 输出 prev_py 到 pos 之间的文本段
         if pos > prev_py:
-            _emit_segment(text[prev_py:pos], prev_py)
+            _emit_text_between(prev_py, pos, previous_event_closed_pre)
+            previous_event_closed_pre = False
 
         # 检查 expandable blockquote 结束标记
         if bq_ranges and _is_expandable_end(pos):
             parts.append("||")
 
         # 处理该位置的所有事件
+        closed_pre_at_pos = False
         while event_idx < len(events) and events[event_idx][0] == pos:
             _, event_type, _, _, ent = events[event_idx]
             ent_id = id(ent)
@@ -221,6 +236,8 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
                 # close 事件
                 active_code_entities.discard(ent_id)
                 _emit_tag(_get_close_tag(ent), pos)
+                if ent.type == "pre":
+                    closed_pre_at_pos = True
             else:
                 # open 事件
                 if ent.type in _CODE_ENTITY_TYPES:
@@ -229,11 +246,12 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
 
             event_idx += 1
 
+        previous_event_closed_pre = closed_pre_at_pos
         prev_py = pos
 
     # 输出剩余文本
     if prev_py < len(text):
-        _emit_segment(text[prev_py:], prev_py)
+        _emit_text_between(prev_py, len(text), previous_event_closed_pre)
 
     # 检查 expandable blockquote 在文本末尾结束
     if bq_ranges and _is_expandable_end(len(text)):

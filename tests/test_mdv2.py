@@ -136,6 +136,21 @@ class PreTest(unittest.TestCase):
         result = entities_to_markdownv2(text, entities)
         self.assertEqual(result, "```python\nprint(1)\n```")
 
+    def test_adjacent_pre_blocks_do_not_gain_blank_line(self):
+        text = "a\n\nb"
+        entities = [
+            MessageEntity(type="pre", offset=0, length=1, language="py"),
+            MessageEntity(type="pre", offset=3, length=1, language="py"),
+        ]
+        result = entities_to_markdownv2(text, entities)
+        self.assertEqual(result, "```py\na\n```\n```py\nb\n```")
+
+    def test_pre_before_text_keeps_single_separator_line(self):
+        text = "a\n\ntext"
+        entities = [MessageEntity(type="pre", offset=0, length=1, language="py")]
+        result = entities_to_markdownv2(text, entities)
+        self.assertEqual(result, "```py\na\n```\ntext")
+
 
 class TextLinkTest(unittest.TestCase):
     def test_text_link(self):
