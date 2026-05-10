@@ -35,7 +35,11 @@ def _send_text_with_entities(bot, chat_id, text: str, entities_dicts: list[dict]
         )
     except Exception as e:
         err = str(e)
-        if "send messages to bots" in err or "bot can't send messages to bots" in err:
+        if (
+            "send messages to bots" in err
+            or "bot can't send messages to bots" in err
+            or "bot can't send messages to the bot" in err
+        ):
             return True
         # Re-raise unexpected errors (e.g. entity validation failures)
         raise
@@ -152,7 +156,11 @@ def _send_mdv2(bot, chat_id, mdv2_text: str) -> bool:
         )
     except Exception as e:
         err = str(e)
-        if "send messages to bots" in err or "bot can't send messages to bots" in err:
+        if (
+            "send messages to bots" in err
+            or "bot can't send messages to bots" in err
+            or "bot can't send messages to the bot" in err
+        ):
             return True
         raise
     return False

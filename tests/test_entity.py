@@ -80,8 +80,24 @@ class SplitEntitiesTest(unittest.TestCase):
 
     def test_empty_text(self):
         result = split_entities("", [], max_utf16_len=100)
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], ("", []))
+        self.assertEqual(result, [])
+
+    def test_whitespace_only_text_is_omitted_without_splitting(self):
+        result = split_entities("\n\n", [], max_utf16_len=100)
+        self.assertEqual(result, [])
+
+    def test_whitespace_only_chunks_are_omitted_after_splitting(self):
+        result = split_entities("\n" * 5000, [], max_utf16_len=4096)
+        self.assertEqual(result, [])
+
+    def test_omits_whitespace_only_chunk_but_keeps_content_chunk(self):
+        text = ("\n" * 5000) + "hello"
+        entities = [MessageEntity(type="bold", offset=5000, length=5)]
+        result = split_entities(text, entities, max_utf16_len=4096)
+        self.assertEqual(
+            result,
+            [("\n" * 904 + "hello", [MessageEntity(type="bold", offset=904, length=5)])],
+        )
 
     def test_split_at_newline(self):
         text = "aaa\nbbb\nccc"

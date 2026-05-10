@@ -80,10 +80,13 @@ def split_entities(
     """Split (text, entities) into chunks not exceeding max_utf16_len UTF-16 code units.
 
     Tries to split at newline boundaries. Entities that span a split boundary
-    are clipped into both chunks.
+    are clipped into both chunks. Whitespace-only chunks are omitted because
+    Telegram rejects them as empty message text.
     """
     total = utf16_len(text)
     if total <= max_utf16_len:
+        if not text.strip():
+            return []
         return [(text, list(entities))]
 
     offsets = _build_utf16_offset_table(text)
@@ -162,6 +165,7 @@ def split_entities(
                 )
             )
 
-        result.append((chunk_text, chunk_entities))
+        if chunk_text.strip():
+            result.append((chunk_text, chunk_entities))
 
     return result

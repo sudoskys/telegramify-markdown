@@ -152,6 +152,8 @@ for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4
     )
 ```
 
+`split_entities()` omits empty and whitespace-only chunks because Telegram rejects them as empty messages.
+
 ### `markdownify()` — direct Markdown to MarkdownV2
 
 If your middleware only supports `parse_mode="MarkdownV2"` and cannot pass entities, use `markdownify()` for a
@@ -248,7 +250,8 @@ Returns an ordered list of `Text`, `File`, or `Photo` objects.
 ### `split_entities(text, entities, max_utf16_len) -> list[tuple[str, list[MessageEntity]]]`
 
 Split text + entities into chunks within a UTF-16 length limit. Splits at newline boundaries;
-entities spanning a split point are clipped into both chunks.
+entities spanning a split point are clipped into both chunks. Empty and whitespace-only
+chunks are omitted because Telegram rejects them as empty messages.
 
 ### `markdownify(content, *, latex_escape=True) -> str`
 
