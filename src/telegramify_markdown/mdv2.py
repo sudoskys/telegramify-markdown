@@ -128,6 +128,10 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
                 return True
         return False
 
+    expandable_end_positions = {
+        end_py for _, end_py, typ in bq_ranges if typ == "expandable_blockquote"
+    }
+
     # 构建扫描线事件
     events: list[tuple[int, int, int, int, MessageEntity]] = []
     for seq, ent in enumerate(other_entities):
@@ -141,6 +145,10 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
         events.append((end_py, 0, ent.length, -seq, ent))       # close: -seq 实现 LIFO
 
     events.sort(key=lambda e: (e[0], e[1], e[2], e[3]))
+    events_by_pos: dict[int, list[tuple[int, int, int, int, MessageEntity]]] = {}
+    for event in events:
+        events_by_pos.setdefault(event[0], []).append(event)
+    boundary_positions = sorted(set(events_by_pos) | expandable_end_positions)
 
     # 追踪当前活跃的 code/pre entity
     active_code_entities: set[int] = set()
@@ -213,38 +221,35 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
             parts.append(tag)
 
     # 扫描线主循环
-    event_idx = 0
-    while event_idx < len(events):
-        pos = events[event_idx][0]
-
+    for pos in boundary_positions:
         # 输出 prev_py 到 pos 之间的文本段
         if pos > prev_py:
             _emit_text_between(prev_py, pos, previous_event_closed_pre)
             previous_event_closed_pre = False
 
-        # 检查 expandable blockquote 结束标记
-        if bq_ranges and _is_expandable_end(pos):
+        # 同一边界先关闭内部 entity，再关闭 expandable blockquote，
+        # 最后打开后续 entity，避免 MarkdownV2 标记交叉。
+        closed_pre_at_pos = False
+        pos_events = events_by_pos.get(pos, [])
+        for _, event_type, _, _, ent in pos_events:
+            if event_type != 0:
+                continue
+            ent_id = id(ent)
+            active_code_entities.discard(ent_id)
+            _emit_tag(_get_close_tag(ent), pos)
+            if ent.type == "pre":
+                closed_pre_at_pos = True
+
+        if pos in expandable_end_positions:
             parts.append("||")
 
-        # 处理该位置的所有事件
-        closed_pre_at_pos = False
-        while event_idx < len(events) and events[event_idx][0] == pos:
-            _, event_type, _, _, ent = events[event_idx]
+        for _, event_type, _, _, ent in pos_events:
+            if event_type != 1:
+                continue
             ent_id = id(ent)
-
-            if event_type == 0:
-                # close 事件
-                active_code_entities.discard(ent_id)
-                _emit_tag(_get_close_tag(ent), pos)
-                if ent.type == "pre":
-                    closed_pre_at_pos = True
-            else:
-                # open 事件
-                if ent.type in _CODE_ENTITY_TYPES:
-                    active_code_entities.add(ent_id)
-                _emit_tag(_get_open_tag(ent), pos)
-
-            event_idx += 1
+            if ent.type in _CODE_ENTITY_TYPES:
+                active_code_entities.add(ent_id)
+            _emit_tag(_get_open_tag(ent), pos)
 
         previous_event_closed_pre = closed_pre_at_pos
         prev_py = pos
@@ -252,10 +257,6 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
     # 输出剩余文本
     if prev_py < len(text):
         _emit_text_between(prev_py, len(text), previous_event_closed_pre)
-
-    # 检查 expandable blockquote 在文本末尾结束
-    if bq_ranges and _is_expandable_end(len(text)):
-        parts.append("||")
 
     return "".join(parts)
 
