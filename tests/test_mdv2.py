@@ -195,6 +195,16 @@ class ExpandableBlockquoteTest(unittest.TestCase):
         result = entities_to_markdownv2(text, entities)
         self.assertEqual(result, "**>summary\n>details||")
 
+    def test_expandable_blockquote_with_same_range_bold(self):
+        """相同范围的 bold 应在 expandable blockquote 标记前闭合。"""
+        text = "line1\nline2"
+        entities = [
+            MessageEntity(type="bold", offset=0, length=utf16_len(text)),
+            MessageEntity(type="expandable_blockquote", offset=0, length=utf16_len(text)),
+        ]
+        result = entities_to_markdownv2(text, entities)
+        self.assertEqual(result, "**>*line1\n>line2*||")
+
 
 # ── 第三层：组合与边界 ──
 
