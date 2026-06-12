@@ -340,6 +340,40 @@ $$E = mc^2$$
             "[CONTRACT] Telegram returned an empty rich message",
         )
 
+    def test_telegramify_rich_chunks_accepted_by_send_rich_message(self):
+        """telegramify_rich() 输出的所有 chunk 均被 Telegram 接受。"""
+        from telegramify_markdown import telegramify_rich
+
+        # 生成一个触发拆分的长文档（600+ 段落）
+        paragraphs = [f"Paragraph {i}: some content here." for i in range(550)]
+        md = "\n\n".join(paragraphs)
+        items = telegramify_rich(md, skip_entity_detection=True)
+        self.assertGreater(len(items), 1, "Expected multiple chunks for 550 paragraphs")
+
+        message_ids = []
+        try:
+            for item in items:
+                result = _post_bot_api_json(
+                    self.token,
+                    "sendRichMessage",
+                    {
+                        "chat_id": self.chat_id,
+                        "rich_message": item.to_dict(),
+                        "disable_notification": True,
+                    },
+                )
+                mid = result.get("message_id")
+                if mid:
+                    message_ids.append(mid)
+                self.assertIn(
+                    "rich_message",
+                    result,
+                    "[CONTRACT] Telegram response missing rich_message",
+                )
+        finally:
+            for mid in message_ids:
+                _delete_message_best_effort(self.token, self.chat_id, mid)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,7 @@
 
 | ADR | Author | Date | Summary |
 |-----|--------|------|---------|
+| [ADR-001](./001-rich-message-pipeline-composition.md) | Codex | 2026-06-12 | Split Rich Message output at pyromark source block boundaries, not at rendered HTML byte offsets. Rich Message delivery is a parallel pipeline to the Entity pipeline, sharing the same parse boundary. |
 
 ---
 

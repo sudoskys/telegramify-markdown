@@ -11,6 +11,7 @@ class ContentType(Enum):
     TEXT = "text"
     FILE = "file"
     PHOTO = "photo"
+    RICH = "rich"
 
 
 # 0.x compat alias
@@ -82,3 +83,16 @@ class Photo:
 
     # 0.x compat: .caption → MarkdownV2 string
     caption = _deprecated_property("caption", "caption_text", is_mdv2=True)
+
+
+@dataclasses.dataclass
+class RichMessage:
+    """Rich Message 投递项，包装 InputRichMessage + ContentTrace。"""
+
+    rich_message: object  # InputRichMessage (避免循环导入)
+    content_trace: ContentTrace
+    content_type: ContentType = ContentType.RICH
+
+    def to_dict(self) -> dict:
+        """代理 InputRichMessage.to_dict()。"""
+        return self.rich_message.to_dict()  # type: ignore[attr-defined]
