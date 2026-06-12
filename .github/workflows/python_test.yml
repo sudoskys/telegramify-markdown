@@ -8,10 +8,20 @@ on:
       - dev
       - develop
       - '**-develop'
+      - 'feat/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - dev
+      - develop
+      - '**-develop'
 
 jobs:
   Testing:
     runs-on: ${{ matrix.os }}
+    env:
+      HAS_TELEGRAM_LIVE: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
     strategy:
       matrix:
         python-version: [ '3.10', '3.12' ] # pyromark requires >=3.10
@@ -37,7 +47,7 @@ jobs:
         run: |
           pdm run -v test-rich
       - name: Run live Rich Message contract test
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: env.HAS_TELEGRAM_LIVE == 'true'
         run: |
           pdm run -v test-live-rich
         env:
