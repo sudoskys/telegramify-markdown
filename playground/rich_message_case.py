@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-import textwrap
+import pathlib
 import urllib.error
 import urllib.request
 
@@ -45,42 +45,8 @@ def main() -> int:
     if not token or not chat_id:
         raise RuntimeError("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required")
 
-    markdown = textwrap.dedent(
-        r"""
-        # Rich Message 实地测评
-
-        这条消息由 `telegramify-markdown.richify()` 生成，并通过 Bot API
-        `sendRichMessage` 发送。它验证的是用户可见的 Rich Message 渲染面。
-
-        ## Inline formatting
-
-        **Bold**, *italic*, ~~strike~~, `inline code`, ||spoiler||,
-        and [Telegram link](https://telegram.org).
-
-        ## Lists and quote
-
-        - normal list item
-        - [x] completed task
-        - [ ] pending task
-
-        > Block quote with **bold** text and inline math $x^2 + y^2$.
-
-        ## Table
-
-        | Metric | Value |
-        |:--|--:|
-        | latency | **42 ms** |
-        | status | ready |
-
-        ## Code and formula
-
-        ```python
-        print("rich message")
-        ```
-
-        $$E = mc^2$$
-        """
-    ).strip()
+    markdown_path = pathlib.Path(__file__).with_name("t_longtext.md")
+    markdown = markdown_path.read_text(encoding="utf-8")
 
     rich_message = richify(markdown, skip_entity_detection=True)
     result = _post_bot_api_json(
@@ -97,6 +63,7 @@ def main() -> int:
         json.dumps(
             {
                 "ok": True,
+                "source": str(markdown_path),
                 "message_id": result.get("message_id"),
                 "has_rich_message": "rich_message" in result,
                 "block_count": len(result.get("rich_message", {}).get("blocks", [])),
