@@ -322,6 +322,8 @@ def _get_open_tag(ent: MessageEntity) -> str:
         return "["
     if ent.type == "custom_emoji":
         return "!["
+    if ent.type == "date_time":
+        return "!["
     if ent.type == "text_mention":
         return "["
     return ""
@@ -341,6 +343,12 @@ def _get_close_tag(ent: MessageEntity) -> str:
     if ent.type == "custom_emoji":
         emoji_id = ent.custom_emoji_id or ""
         return f"](tg://emoji?id={emoji_id})"
+    if ent.type == "date_time":
+        unix_time = "" if ent.unix_time is None else str(ent.unix_time)
+        url = f"tg://time?unix={unix_time}"
+        if ent.date_time_format is not None:
+            url += f"&format={_escape_url(ent.date_time_format)}"
+        return f"]({url})"
     if ent.type == "text_mention":
         return "]"
     return ""

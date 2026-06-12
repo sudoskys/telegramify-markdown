@@ -68,6 +68,38 @@ class MessageEntityTest(unittest.TestCase):
         d = e.to_dict()
         self.assertEqual(d["custom_emoji_id"], "5368324170671202286")
 
+    def test_to_dict_with_text_mention_user(self):
+        user = {"id": 123, "is_bot": False, "first_name": "Ada"}
+        e = MessageEntity(type="text_mention", offset=0, length=3, user=user)
+        d = e.to_dict()
+        self.assertEqual(d["user"], user)
+
+    def test_to_dict_with_date_time(self):
+        e = MessageEntity(
+            type="date_time",
+            offset=0,
+            length=5,
+            unix_time=1647531900,
+            date_time_format="wDT",
+        )
+        d = e.to_dict()
+        self.assertEqual(d["unix_time"], 1647531900)
+        self.assertEqual(d["date_time_format"], "wDT")
+
+    def test_copy_with_preserves_optional_fields(self):
+        e = MessageEntity(
+            type="date_time",
+            offset=10,
+            length=5,
+            unix_time=1647531900,
+            date_time_format="wDT",
+        )
+        copied = e.copy_with(offset=0, length=3)
+        self.assertEqual(copied.offset, 0)
+        self.assertEqual(copied.length, 3)
+        self.assertEqual(copied.unix_time, 1647531900)
+        self.assertEqual(copied.date_time_format, "wDT")
+
 
 class SplitEntitiesTest(unittest.TestCase):
     def test_no_split_needed(self):
@@ -143,6 +175,21 @@ class SplitEntitiesTest(unittest.TestCase):
                 any(e.type == "bold" for e in chunk_entities),
                 f"Chunk '{chunk_text}' missing bold entity",
             )
+
+    def test_split_preserves_date_time_fields(self):
+        text = "time\nlater"
+        entities = [
+            MessageEntity(
+                type="date_time",
+                offset=0,
+                length=4,
+                unix_time=1647531900,
+                date_time_format="wDT",
+            )
+        ]
+        result = split_entities(text, entities, max_utf16_len=5)
+        self.assertEqual(result[0][1][0].unix_time, 1647531900)
+        self.assertEqual(result[0][1][0].date_time_format, "wDT")
 
     def test_split_preserves_total_text(self):
         text = "line1\nline2\nline3\nline4\nline5"

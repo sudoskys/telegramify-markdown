@@ -57,6 +57,7 @@ poetry add "telegramify-markdown[mermaid]"
 - If your middleware only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`markdownify()`**
 - If you need to split long MarkdownV2 output safely → use **`split_markdownv2()`**
 - If you need finer control over the reverse conversion → use **`entities_to_markdownv2()`**
+- If you want Telegram Bot API 10.1 structured Rich Messages → use **`richify()`**
 
 ### `convert()` — single message
 
@@ -77,6 +78,51 @@ bot.send_message(
 ```
 
 No `parse_mode` parameter — Telegram reads the entities directly.
+
+### `richify()` — Bot API 10.1 Rich Message
+
+For Telegram Bot API 10.1 structured messages, use `richify()` to produce an
+`InputRichMessage` payload. This is a parallel output backend: it does not
+change `convert()`.
+
+```python
+import requests
+from telegramify_markdown import richify
+
+md = """
+# Report
+
+| Metric | Value |
+| --- | --- |
+| Speed | **42 ms** |
+
+$$E = mc^2$$
+"""
+
+rich_message = richify(md)
+
+requests.post(
+    f"https://api.telegram.org/bot{token}/sendRichMessage",
+    json={
+        "chat_id": chat_id,
+        "rich_message": rich_message.to_dict(),
+    },
+    timeout=30,
+)
+```
+
+Use `richify(markdown, mode="markdown")` when you want Telegram to parse the
+input as Telegram Rich Markdown directly.
+
+For development changes to Rich Message output, run the live contract test before
+opening a PR:
+
+```bash
+TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... pdm run test-live-rich
+```
+
+The test sends a real `sendRichMessage` request and requires Telegram to return
+`Message.rich_message`.
 
 ### `telegramify()` — long messages, code files, diagrams
 
@@ -267,6 +313,23 @@ Equivalent to `entities_to_markdownv2(*convert(content))`.
 
 Alias for `markdownify()`, kept for 0.x compatibility.
 
+### `richify(markdown, *, mode="html", is_rtl=None, skip_entity_detection=None, latex_escape=False) -> InputRichMessage`
+
+Synchronous. Converts Markdown to a Telegram Bot API 10.1 `InputRichMessage`.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `markdown` | `str` | required | Raw Markdown text |
+| `mode` | `"html" \| "markdown"` | `"html"` | Generate Telegram Rich HTML, or pass input through as Telegram Rich Markdown |
+| `is_rtl` | `bool \| None` | `None` | Optional Bot API `is_rtl` field |
+| `skip_entity_detection` | `bool \| None` | `None` | Optional Bot API `skip_entity_detection` field |
+| `latex_escape` | `bool` | `False` | In HTML mode, keep raw formula source for Telegram math by default |
+
+`richify()` returns an `InputRichMessage` object with `.to_dict()` for Bot API
+payloads. In HTML mode it emits Telegram Rich HTML for paragraphs, headings,
+inline formatting, links, lists, block quotes, tables, code blocks, images with
+HTTP(S) URLs, custom emoji images, and math tags.
+
 ### `entities_to_markdownv2(text, entities=None) -> str`
 
 Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct escaping.
@@ -293,6 +356,22 @@ class MessageEntity:
     url: str | None     # For "text_link" entities
     language: str | None       # For "pre" entities (code block language)
     custom_emoji_id: str | None  # For "custom_emoji" entities
+    user: dict | None   # For "text_mention" entities
+    unix_time: int | None       # For "date_time" entities
+    date_time_format: str | None  # For "date_time" entities
+
+    def to_dict(self) -> dict: ...
+```
+
+### `InputRichMessage`
+
+```python
+@dataclasses.dataclass(slots=True)
+class InputRichMessage:
+    html: str | None
+    markdown: str | None
+    is_rtl: bool | None
+    skip_entity_detection: bool | None
 
     def to_dict(self) -> dict: ...
 ```
@@ -324,6 +403,7 @@ Returns the length of a string in UTF-16 code units (what Telegram uses for offs
 - [x] Horizontal rules `---`
 - [x] LaTeX math `\(...\)` and `\[...\]` (converted to Unicode)
 - [x] Mermaid diagrams (rendered as images, requires `[mermaid]` extra)
+- [x] Telegram Bot API 10.1 Rich Message output via `richify()`
 
 ## 🤖 For AI Coding Assistants
 
@@ -384,6 +464,11 @@ text, entities = convert("**Bold** and `code`")
 mdv2 = entities_to_markdownv2(text, entities)
 bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
 
+### richify() — Telegram Bot API 10.1 Rich Message payload
+from telegramify_markdown import richify
+rich = richify("# Title\n\n| A | B |\n|---|---|\n| 1 | 2 |")
+payload = {"chat_id": chat_id, "rich_message": rich.to_dict()}
+
 ### Configuration
 from telegramify_markdown.config import get_runtime_config
 cfg = get_runtime_config()
@@ -395,6 +480,7 @@ cfg.mermaid.width = 1280
 - entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string
 - NEVER set parse_mode when sending with entities — they are mutually exclusive
 - All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
+- richify() returns an InputRichMessage payload for sendRichMessage, not text + entities
 - Requires Python 3.10+
 ```
 

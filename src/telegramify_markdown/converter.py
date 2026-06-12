@@ -163,6 +163,9 @@ class _EntityScope:
     url: Optional[str] = None
     language: Optional[str] = None
     custom_emoji_id: Optional[str] = None
+    user: Optional[dict] = None
+    unix_time: Optional[int] = None
+    date_time_format: Optional[str] = None
 
 
 # --- EventWalker state machine -----------------------------------------------
@@ -704,6 +707,9 @@ class EventWalker:
                 url=scope.url,
                 language=scope.language,
                 custom_emoji_id=scope.custom_emoji_id,
+                user=scope.user,
+                unix_time=scope.unix_time,
+                date_time_format=scope.date_time_format,
             )
         )
 
