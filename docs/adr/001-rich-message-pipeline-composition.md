@@ -152,15 +152,16 @@ or the block count budget would be exceeded by adding the next block.
 - A document with 600 short paragraphs (block count overflow, not byte overflow)
 - A document with 3 massive code blocks each ~15KB (byte overflow, not block count overflow)
 
-### Flag 3: Oversized atomic blocks are emitted as standalone
+### Flag 3: Splittable oversized atomic blocks are split safely
 
-**Expectation.** A single block that exceeds 32768 bytes (e.g., a 40KB code
-block) is emitted alone in its own chunk. The library logs a warning. The caller
-handles Telegram rejection.
+**Expectation.** A single paragraph, preformatted code block, or Markdown
+paragraph that exceeds 32768 bytes is split into multiple complete chunks, each
+within the byte budget. The splitter preserves wrapper tags around each HTML
+chunk so callers do not receive invalid Rich HTML.
 
-**Verification.** Feed a single `<pre>` block with 40000 bytes of code. Assert
-the result is `[InputRichMessage(html="<pre>...40KB...</pre>")]` with a logged
-warning.
+**Verification.** Feed a 40000-byte paragraph, a 40000-byte `<pre>` block, and
+a 40000-byte Rich Markdown paragraph. Assert each path produces multiple chunks
+and every chunk is at most 32768 UTF-8 bytes.
 
 ### Flag 4: Entity pipeline is unaffected
 
@@ -208,6 +209,32 @@ exist.
 
 ```bash
 # No implementation commands yet. This ADR is awaiting maintainer approval.
+```
+
+### 2026-06-13 Review Repair
+
+**Executor**: Codex
+
+**Scope**:
+- Replaced the original oversized-block behavior. Splittable oversized
+  paragraph/pre/Markdown blocks are split instead of being emitted as oversized
+  standalone chunks.
+- Made empty `telegramify_rich()` input return no delivery item, matching
+  `split_rich(InputRichMessage(html=""))`.
+- Re-checked Telegram block counting with the real `sendRichMessage` endpoint:
+  600 `<li>` items inside one `<ul>` and 601 table rows inside one `<table>` are
+  accepted as one server block; 501 top-level blockquotes are rejected.
+
+**Evidence**:
+
+```bash
+pdm run test-rich
+pdm run python - <<'PY'
+# Live probe summary:
+# ul-600-li ACCEPTED server_blocks 1
+# table-601-rows ACCEPTED server_blocks 1
+# blockquote-501 REJECTED RICH_MESSAGE_BLOCKS_TOO_MANY
+PY
 ```
 
 ## Resolved Questions

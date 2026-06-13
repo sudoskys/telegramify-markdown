@@ -284,8 +284,12 @@ produce multiple payloads when the input exceeds these limits.
 - The converter preserves visible content when a Markdown construct lacks a
   Telegram Rich HTML equivalent.
 - `split_rich()` on an empty payload returns `[]`.
-- An oversized single block that cannot be split further is emitted as-is with a
-  warning log. The caller is responsible for handling Telegram rejection.
+- An oversized paragraph, preformatted code block, or Rich Markdown paragraph is
+  split into multiple valid chunks. Rich HTML wrapper tags are preserved on each
+  chunk.
+- An oversized Rich HTML block that the library cannot split safely is emitted
+  as-is with a warning log. The caller is responsible for handling Telegram
+  rejection.
 
 ## Acceptance Cases
 
@@ -297,8 +301,8 @@ produce multiple payloads when the input exceeds these limits.
 - `to_dict()` omits optional fields when they are `None`.
 - `mode="markdown"` passes Markdown through in the `markdown` field.
 - Existing `convert()` and `telegramify()` behavior remains unchanged.
-- `telegramify_rich()` on a 50KB Markdown produces multiple chunks, each within
-  32768 UTF-8 characters and 500 blocks.
+- `telegramify_rich()` on a 50KB paragraph or code block produces multiple
+  chunks, each within 32768 UTF-8 characters and 500 blocks.
 - Every chunk from `telegramify_rich()` is valid Rich HTML (no broken tags, no
   orphaned nesting).
 - Before opening a PR that changes Rich Message behavior, `pdm run test-live-rich`

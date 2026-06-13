@@ -1,5 +1,6 @@
 import logging
 import unittest
+from html import unescape
 
 from telegramify_markdown import InputRichMessage, RichMessage, richify, split_rich, telegramify_rich
 from telegramify_markdown.rich import RichBlock, _RichHtmlWalker, _walk_blocks_from_markdown
@@ -215,16 +216,20 @@ class SplitRichTest(unittest.TestCase):
             self.assertLessEqual(byte_len, 32768)
 
     def test_oversized_single_block(self):
-        """40KB 的单个 pre block 应独立发出并产生 warning。"""
+        """40KB 的单个 pre block 应拆分成多个限制内 chunk。"""
         code_content = "y" * 40000
         md = f"```\n{code_content}\n```"
         rich = richify(md)
 
-        with self.assertLogs("telegramify_markdown.rich", level=logging.WARNING) as cm:
-            result = split_rich(rich)
+        result = split_rich(rich)
 
-        self.assertEqual(len(result), 1)
-        self.assertIn("超过字节限制", cm.output[0])
+        self.assertGreater(len(result), 1)
+        self.assertEqual(
+            "".join(chunk.html.removeprefix("<pre>").removesuffix("</pre>") for chunk in result),
+            code_content,
+        )
+        for chunk in result:
+            self.assertLessEqual(len(chunk.html.encode("utf-8")), 32768)
 
     def test_markdown_mode_split(self):
         """markdown 模式按段落拆分。"""
@@ -238,11 +243,76 @@ class SplitRichTest(unittest.TestCase):
             byte_len = len(chunk.markdown.encode("utf-8"))
             self.assertLessEqual(byte_len, 32768)
 
+    def test_markdown_mode_splits_oversized_single_paragraph(self):
+        """单段 Markdown 超限时也必须拆到限制内。"""
+        rich = InputRichMessage(markdown="A" * 40000)
+        result = split_rich(rich)
+
+        self.assertGreater(len(result), 1)
+        self.assertEqual("".join(chunk.markdown for chunk in result), "A" * 40000)
+        for chunk in result:
+            self.assertLessEqual(len(chunk.markdown.encode("utf-8")), 32768)
+
     def test_empty_html_payload(self):
         """空 html payload 的 split 返回空列表。"""
         rich = InputRichMessage(html="")
         result = split_rich(rich)
         self.assertEqual(result, [])
+
+    def test_html_mode_splits_oversized_paragraph(self):
+        """单个超长 paragraph 应拆成多个合法 paragraph chunk。"""
+        md = "A" * 40000
+        result = telegramify_rich(md)
+
+        self.assertGreater(len(result), 1)
+        for item in result:
+            html = item.to_dict()["html"]
+            self.assertTrue(html.startswith("<p>"))
+            self.assertTrue(html.endswith("</p>"))
+            self.assertLessEqual(len(html.encode("utf-8")), 32768)
+
+    def test_html_mode_splits_oversized_escaped_paragraph(self):
+        """超长 paragraph 含 HTML 特殊字符时不能拆断 escape entity。"""
+        visible = "<&>" * 12000
+        result = telegramify_rich(visible)
+
+        self.assertGreater(len(result), 1)
+        recovered = []
+        for item in result:
+            html = item.to_dict()["html"]
+            self.assertTrue(html.startswith("<p>"))
+            self.assertTrue(html.endswith("</p>"))
+            self.assertLessEqual(len(html.encode("utf-8")), 32768)
+            recovered.append(unescape(html.removeprefix("<p>").removesuffix("</p>")))
+        self.assertEqual("".join(recovered), visible)
+
+    def test_html_mode_splits_oversized_pre_block(self):
+        """单个超长 code block 应拆成多个合法 pre chunk。"""
+        md = "```\n" + ("A" * 40000) + "\n```"
+        result = telegramify_rich(md)
+
+        self.assertGreater(len(result), 1)
+        for item in result:
+            html = item.to_dict()["html"]
+            self.assertTrue(html.startswith("<pre>"))
+            self.assertTrue(html.endswith("</pre>"))
+            self.assertLessEqual(len(html.encode("utf-8")), 32768)
+
+    def test_html_mode_splits_oversized_escaped_pre_block(self):
+        """超长 code block 含 HTML 特殊字符时保持可见文本。"""
+        visible = "<&>" * 12000
+        md = "```\n" + visible + "\n```"
+        result = telegramify_rich(md)
+
+        self.assertGreater(len(result), 1)
+        recovered = []
+        for item in result:
+            html = item.to_dict()["html"]
+            self.assertTrue(html.startswith("<pre>"))
+            self.assertTrue(html.endswith("</pre>"))
+            self.assertLessEqual(len(html.encode("utf-8")), 32768)
+            recovered.append(unescape(html.removeprefix("<pre>").removesuffix("</pre>")))
+        self.assertEqual("".join(recovered), visible)
 
 
 class TelegramifyRichTest(unittest.TestCase):
@@ -278,6 +348,11 @@ class TelegramifyRichTest(unittest.TestCase):
         md = "\n\n".join(paragraphs)
         result = telegramify_rich(md)
         self.assertGreater(len(result), 1)
+
+    def test_empty_input_matches_split_rich_empty_semantics(self):
+        """空输入不返回可发送的空 RichMessage。"""
+        self.assertEqual(telegramify_rich(""), [])
+        self.assertEqual(telegramify_rich("   \n\n   "), [])
 
     def test_richify_still_returns_single_payload(self):
         """确认 richify() 仍返回单个 InputRichMessage（无回归）。"""

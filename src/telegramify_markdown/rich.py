@@ -12,6 +12,8 @@ from __future__ import annotations
 import dataclasses
 import html
 import logging
+import re
+from html.parser import HTMLParser
 from typing import Literal, Optional
 
 import pyromark
@@ -791,6 +793,9 @@ def _split_markdown(
     md_content = rich_message.markdown
     assert md_content is not None
 
+    if not md_content.strip():
+        return []
+
     if len(md_content.encode("utf-8")) <= byte_limit:
         return [rich_message]
 
@@ -803,6 +808,24 @@ def _split_markdown(
         para_bytes = len(para.encode("utf-8"))
         # 段落分隔符的字节数
         sep_bytes = 2 if current_parts else 0
+
+        if para_bytes > byte_limit:
+            if current_parts:
+                chunks.append(InputRichMessage(
+                    markdown="\n\n".join(current_parts),
+                    is_rtl=rich_message.is_rtl,
+                    skip_entity_detection=rich_message.skip_entity_detection,
+                ))
+                current_parts = []
+                current_bytes = 0
+
+            for part in _split_text_by_utf8_bytes(para, byte_limit):
+                chunks.append(InputRichMessage(
+                    markdown=part,
+                    is_rtl=rich_message.is_rtl,
+                    skip_entity_detection=rich_message.skip_entity_detection,
+                ))
+            continue
 
         if current_bytes + sep_bytes + para_bytes > byte_limit and current_parts:
             # flush 当前 chunk
@@ -864,12 +887,18 @@ def _bin_blocks(
                 current_blocks = []
                 current_bytes = 0
                 current_block_count = 0
-            logger.warning(
-                "单个 block 超过字节限制 (%d > %d)，独立发出。Telegram 可能拒绝。",
-                block.byte_len,
-                byte_limit,
-            )
-            _flush_chunk(chunks, [block], mode, is_rtl, skip_entity_detection)
+
+            split_blocks = _split_oversized_block(block, byte_limit)
+            if split_blocks:
+                for split_block in split_blocks:
+                    _flush_chunk(chunks, [split_block], mode, is_rtl, skip_entity_detection)
+            else:
+                logger.warning(
+                    "单个 block 超过字节限制 (%d > %d)，独立发出。Telegram 可能拒绝。",
+                    block.byte_len,
+                    byte_limit,
+                )
+                _flush_chunk(chunks, [block], mode, is_rtl, skip_entity_detection)
             continue
 
         # 检查是否会超出预算
@@ -907,6 +936,125 @@ def _flush_chunk(
         chunks.append(InputRichMessage(markdown=joined, is_rtl=is_rtl, skip_entity_detection=skip_entity_detection))
 
 
+def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]:
+    """Split oversized paragraph/pre blocks while preserving valid Rich HTML."""
+    html_text = block.html
+
+    paragraph = _extract_wrapped_text(html_text, "p")
+    if paragraph is not None:
+        budget = byte_limit - len("<p></p>".encode("utf-8"))
+        return [
+            _make_block(f"<p>{_escape_text(part)}</p>")
+            for part in _split_text_by_escaped_utf8_bytes(
+                _html_fragment_to_text(paragraph),
+                budget,
+            )
+            if part
+        ]
+
+    pre = _extract_pre_text(html_text)
+    if pre is not None:
+        open_tag, content, close_tag = pre
+        budget = byte_limit - len((open_tag + close_tag).encode("utf-8"))
+        return [
+            _make_block(open_tag + _escape_text(part) + close_tag)
+            for part in _split_text_by_escaped_utf8_bytes(
+                html.unescape(content),
+                budget,
+            )
+            if part
+        ]
+
+    return []
+
+
+def _make_block(html_text: str) -> RichBlock:
+    return RichBlock(
+        html=html_text,
+        byte_len=len(html_text.encode("utf-8")),
+        block_count=1,
+    )
+
+
+def _extract_wrapped_text(html_text: str, tag: str) -> str | None:
+    open_tag = f"<{tag}>"
+    close_tag = f"</{tag}>"
+    if html_text.startswith(open_tag) and html_text.endswith(close_tag):
+        return html_text[len(open_tag):-len(close_tag)]
+    return None
+
+
+def _extract_pre_text(html_text: str) -> tuple[str, str, str] | None:
+    match = re.fullmatch(r"(<pre(?:><code class=\"[^\"]+\">|>))(.*)(</code></pre>|</pre>)", html_text, re.DOTALL)
+    if not match:
+        return None
+    return match.group(1), match.group(2), match.group(3)
+
+
+def _split_text_by_utf8_bytes(text: str, byte_limit: int) -> list[str]:
+    """Split text into chunks whose UTF-8 encoded byte length fits byte_limit."""
+    if byte_limit <= 0:
+        raise ValueError("byte_limit must leave room for wrapper tags")
+
+    chunks: list[str] = []
+    current: list[str] = []
+    current_bytes = 0
+    for ch in text:
+        ch_bytes = len(ch.encode("utf-8"))
+        if current and current_bytes + ch_bytes > byte_limit:
+            chunks.append("".join(current))
+            current = []
+            current_bytes = 0
+        current.append(ch)
+        current_bytes += ch_bytes
+    if current:
+        chunks.append("".join(current))
+    return chunks
+
+
+def _split_text_by_escaped_utf8_bytes(text: str, byte_limit: int) -> list[str]:
+    """Split raw text by the byte length it will have after HTML escaping."""
+    if byte_limit <= 0:
+        raise ValueError("byte_limit must leave room for wrapper tags")
+
+    chunks: list[str] = []
+    current: list[str] = []
+    current_bytes = 0
+    for ch in text:
+        escaped_bytes = len(_escape_text(ch).encode("utf-8"))
+        if current and current_bytes + escaped_bytes > byte_limit:
+            chunks.append("".join(current))
+            current = []
+            current_bytes = 0
+        current.append(ch)
+        current_bytes += escaped_bytes
+    if current:
+        chunks.append("".join(current))
+    return chunks
+
+
+class _TextExtractor(HTMLParser):
+    """Extract visible text from a trusted Rich HTML fragment."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+
+def _html_fragment_to_text(fragment: str) -> str:
+    parser = _TextExtractor()
+    parser.feed(fragment)
+    parser.close()
+    return "".join(parser.parts)
+
+
+def _escape_text(value: str) -> str:
+    return html.escape(value, quote=False)
+
+
 def telegramify_rich(
     markdown: str,
     *,
@@ -936,8 +1084,7 @@ def telegramify_rich(
             mode="html",
         )
         if not chunks:
-            # 空输入
-            chunks = [InputRichMessage(html="", is_rtl=is_rtl, skip_entity_detection=skip_entity_detection)]
+            chunks = []
     else:
         # markdown 模式: 先构建再拆分
         payload = richify(
