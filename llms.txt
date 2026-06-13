@@ -25,6 +25,7 @@ Key design decisions:
 - [MessageEntity — entity.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/entity.py): MessageEntity dataclass, `utf16_len()`, `split_entities()`
 - [MarkdownV2 reverse converter — mdv2.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/mdv2.py): `entities_to_markdownv2()` for APIs that only support parse_mode
 - [Async pipeline — pipeline.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/pipeline.py): Message splitting, code block extraction, Mermaid rendering
+- [Streaming — stream/](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/stream/__init__.py): `DraftStream` (private chat drafts), `EditStream` (group edit fallback), `StreamCore` (generic throttled buffer)
 - [Output types — content.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/content.py): Text, File, Photo, ContentType, ContentTrace
 - [Configuration — config.py](https://raw.githubusercontent.com/sudoskys/telegramify-markdown/main/src/telegramify_markdown/config.py): Symbol customization, RenderConfig singleton
 

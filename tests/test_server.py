@@ -10,6 +10,7 @@ the message content (text + entities) and rejects it with a descriptive
 If the entities were malformed, we'd get a different error first.
 """
 
+import asyncio
 import json
 import os
 import pathlib
@@ -373,6 +374,132 @@ $$E = mc^2$$
         finally:
             for mid in message_ids:
                 _delete_message_best_effort(self.token, self.chat_id, mid)
+
+
+@unittest.skipUnless(
+    os.getenv("TELEGRAM_LIVE_REQUIRED") == "1" and os.getenv("TELEGRAM_CHAT_ID"),
+    "TELEGRAM_LIVE_REQUIRED=1 and TELEGRAM_CHAT_ID required for draft streaming tests",
+)
+class TelegramStreamDraftLiveTest(unittest.IsolatedAsyncioTestCase):
+    """Live test for DraftStream: sends draft updates then a final rich message.
+
+    Proves that:
+    1. sendRichMessageDraft is accepted by the real Telegram API
+    2. DraftStream correctly throttles and accumulates content
+    3. Final sendRichMessage delivers the complete message
+
+    Requires private chat (draft API is private-chat only).
+    """
+
+    def setUp(self):
+        self.token = os.environ["TELEGRAM_BOT_TOKEN"]
+        self.chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        self.message_id = None
+
+    def tearDown(self):
+        _delete_message_best_effort(self.token, self.chat_id, self.message_id)
+
+    async def test_draft_stream_rich_mode(self):
+        """DraftStream(mode='rich') sends drafts and finalizes with sendRichMessage."""
+        from telegramify_markdown.stream.draft import (
+            DraftStream,
+            RichDraftPayload,
+            RichFinalPayload,
+        )
+
+        draft_count = 0
+        draft_errors = []
+
+        async def send_draft(payload: RichDraftPayload) -> None:
+            nonlocal draft_count
+            draft_count += 1
+            api_payload = {
+                "chat_id": self.chat_id,
+                "draft_id": payload.draft_id,
+                "rich_message": payload.rich_message.to_dict(),
+            }
+            try:
+                _post_bot_api_json(self.token, "sendRichMessageDraft", api_payload)
+            except AssertionError as e:
+                draft_errors.append(str(e))
+                raise
+
+        async def send_final(payload: RichFinalPayload) -> None:
+            api_payload = {
+                "chat_id": self.chat_id,
+                "rich_message": payload.rich_message.to_dict(),
+                "disable_notification": True,
+            }
+            result = _post_bot_api_json(self.token, "sendRichMessage", api_payload)
+            self.message_id = result.get("message_id")
+
+        md = "# Stream Test\n\nHello **world**, this is a `streaming` draft.\n\n- Item 1\n- Item 2\n"
+
+        async with DraftStream(
+            send_draft=send_draft,
+            send_final=send_final,
+            mode="rich",
+            interval=0.3,
+            thinking_delay=0.3,
+            keepalive_timeout=25.0,
+        ) as stream:
+            # 模拟逐 token 输入
+            for ch in md:
+                stream.feed(ch)
+                await asyncio.sleep(0.02)
+
+        # Verify results
+        self.assertGreater(draft_count, 0, "Expected at least one draft to be sent")
+        self.assertIsNotNone(self.message_id, "Final message should have been sent")
+        self.assertEqual(len(draft_errors), 0, f"Draft errors: {draft_errors}")
+
+    async def test_draft_stream_entity_mode(self):
+        """DraftStream(mode='entity') sends drafts via sendMessageDraft."""
+        from telegramify_markdown.stream.draft import (
+            DraftStream,
+            EntityDraftPayload,
+            EntityFinalPayload,
+        )
+
+        draft_count = 0
+
+        async def send_draft(payload: EntityDraftPayload) -> None:
+            nonlocal draft_count
+            draft_count += 1
+            api_payload = {
+                "chat_id": self.chat_id,
+                "draft_id": payload.draft_id,
+                "text": payload.text,
+                "entities": [e.to_dict() if hasattr(e, "to_dict") else e for e in payload.entities],
+            }
+            _post_bot_api_json(self.token, "sendMessageDraft", api_payload)
+
+        async def send_final(payload: EntityFinalPayload) -> None:
+            api_payload = {
+                "chat_id": self.chat_id,
+                "text": payload.text,
+                "entities": [e.to_dict() if hasattr(e, "to_dict") else e for e in payload.entities],
+                "disable_notification": True,
+            }
+            result = _post_bot_api_json(self.token, "sendMessage", api_payload)
+            self.message_id = result.get("message_id")
+
+        md = "Hello **bold** and `code` test.\n"
+
+        async with DraftStream(
+            send_draft=send_draft,
+            send_final=send_final,
+            mode="entity",
+            interval=0.3,
+            thinking_delay=None,
+            keepalive_timeout=25.0,
+        ) as stream:
+            for ch in md:
+                stream.feed(ch)
+                await asyncio.sleep(0.02)
+
+        self.assertGreater(draft_count, 0)
+        self.assertIsNotNone(self.message_id)
 
 
 if __name__ == "__main__":

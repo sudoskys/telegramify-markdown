@@ -21,6 +21,8 @@ tests = [
     "pyTelegramBotAPI>=4.22.0",
     "python-dotenv>=1.0.1",
     "PyYAML>=6.0.3",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.urls]
@@ -39,3 +41,8 @@ distribution = true
 test = "python -m unittest discover -s ./tests -p test_*.py"
 test-rich = "python -m unittest tests.test_rich"
 test-live-rich = { cmd = "python -m unittest tests.test_server.TelegramRichMessageLiveTest", env = { TELEGRAM_LIVE_REQUIRED = "1" } }
+test-live-stream = { cmd = "python -m unittest tests.test_server.TelegramStreamDraftLiveTest", env = { TELEGRAM_LIVE_REQUIRED = "1" } }
+test-stream = "pytest tests/test_stream.py -v"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
