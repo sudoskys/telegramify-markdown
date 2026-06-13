@@ -31,17 +31,30 @@ class MessageEntity:
     url: Optional[str] = None
     language: Optional[str] = None
     custom_emoji_id: Optional[str] = None
+    user: Optional[dict] = None
+    unix_time: Optional[int] = None
+    date_time_format: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Convert to a dict suitable for the Telegram Bot API."""
         result: dict = {"type": self.type, "offset": self.offset, "length": self.length}
         if self.url is not None:
             result["url"] = self.url
+        if self.user is not None:
+            result["user"] = self.user
         if self.language is not None:
             result["language"] = self.language
         if self.custom_emoji_id is not None:
             result["custom_emoji_id"] = self.custom_emoji_id
+        if self.unix_time is not None:
+            result["unix_time"] = self.unix_time
+        if self.date_time_format is not None:
+            result["date_time_format"] = self.date_time_format
         return result
+
+    def copy_with(self, **changes) -> "MessageEntity":
+        """Return a copy with selected fields replaced."""
+        return dataclasses.replace(self, **changes)
 
 
 def _find_newline_positions(text: str) -> list[int]:
@@ -155,13 +168,9 @@ def split_entities(
                 continue
 
             chunk_entities.append(
-                MessageEntity(
-                    type=ent.type,
+                ent.copy_with(
                     offset=clipped_start - chunk_utf16_start,
                     length=clipped_length,
-                    url=ent.url,
-                    language=ent.language,
-                    custom_emoji_id=ent.custom_emoji_id,
                 )
             )
 

@@ -55,13 +55,9 @@ def _strip_newlines_adjust(
         if new_length <= 0:
             continue
         adjusted.append(
-            MessageEntity(
-                type=ent.type,
+            ent.copy_with(
                 offset=new_offset,
                 length=new_length,
-                url=ent.url,
-                language=ent.language,
-                custom_emoji_id=ent.custom_emoji_id,
             )
         )
 
@@ -91,13 +87,9 @@ def _slice_text_entities(
         if clipped_length <= 0:
             continue
         chunk_entities.append(
-            MessageEntity(
-                type=ent.type,
+            ent.copy_with(
                 offset=clipped_start - utf16_start,
                 length=clipped_length,
-                url=ent.url,
-                language=ent.language,
-                custom_emoji_id=ent.custom_emoji_id,
             )
         )
     return chunk_text, chunk_entities
