@@ -58,6 +58,7 @@ poetry add "telegramify-markdown[mermaid]"
 - If you need to split long MarkdownV2 output safely → use **`split_markdownv2()`**
 - If you need finer control over the reverse conversion → use **`entities_to_markdownv2()`**
 - If you want Telegram Bot API 10.1 structured Rich Messages → use **`richify()`**
+- If you need to split long Rich Messages automatically → use **`telegramify_rich()`**
 
 ### `convert()` — single message
 
@@ -113,6 +114,33 @@ requests.post(
 
 Use `richify(markdown, mode="markdown")` when you want Telegram to parse the
 input as Telegram Rich Markdown directly.
+
+### `telegramify_rich()` — long Rich Messages with automatic splitting
+
+For long Markdown that exceeds Telegram's Rich Message limits (32768 bytes or
+500 blocks), `telegramify_rich()` splits the output into multiple sendable
+chunks:
+
+```python
+import requests
+from telegramify_markdown import telegramify_rich
+
+md = very_long_markdown  # e.g. LLM output
+
+items = telegramify_rich(md)
+for item in items:
+    requests.post(
+        f"https://api.telegram.org/bot{token}/sendRichMessage",
+        json={
+            "chat_id": chat_id,
+            "rich_message": item.to_dict(),
+        },
+        timeout=30,
+    )
+```
+
+Each chunk is a valid, self-contained Rich HTML document. Splitting happens at
+block boundaries — never in the middle of a tag or nested structure.
 
 For development changes to Rich Message output, run the live contract test before
 opening a PR:
@@ -330,6 +358,27 @@ payloads. In HTML mode it emits Telegram Rich HTML for paragraphs, headings,
 inline formatting, links, lists, block quotes, tables, code blocks, images with
 HTTP(S) URLs, custom emoji images, and math tags.
 
+### `telegramify_rich(markdown, *, mode="html", is_rtl=None, skip_entity_detection=None, latex_escape=False) -> list[RichMessage]`
+
+Synchronous. Converts Markdown to a list of sendable Rich Message chunks, each
+within Telegram limits (32768 UTF-8 bytes, 500 top-level blocks).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `markdown` | `str` | required | Raw Markdown text |
+| `mode` | `"html" \| "markdown"` | `"html"` | Rich HTML or Rich Markdown output |
+| `is_rtl` | `bool \| None` | `None` | Optional Bot API `is_rtl` field |
+| `skip_entity_detection` | `bool \| None` | `None` | Optional Bot API `skip_entity_detection` field |
+| `latex_escape` | `bool` | `False` | In HTML mode, keep raw formula source by default |
+
+Returns `list[RichMessage]` where each item has `.to_dict()` for the Bot API.
+
+### `split_rich(rich_message) -> list[InputRichMessage]`
+
+Split a single `InputRichMessage` into multiple chunks within Telegram limits.
+Useful when you already have a payload (e.g. from `richify()` on very long input)
+and only need splitting.
+
 ### `entities_to_markdownv2(text, entities=None) -> str`
 
 Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct escaping.
@@ -383,6 +432,7 @@ class InputRichMessage:
 | `Text` | `text`, `entities`, `content_trace` | A text message segment |
 | `File` | `file_name`, `file_data`, `caption_text`, `caption_entities`, `content_trace` | An extracted code block |
 | `Photo` | `file_name`, `file_data`, `caption_text`, `caption_entities`, `content_trace` | A rendered Mermaid diagram |
+| `RichMessage` | `rich_message`, `content_trace` | A Rich Message chunk (has `.to_dict()`) |
 
 ### `utf16_len(text) -> int`
 
@@ -469,6 +519,13 @@ from telegramify_markdown import richify
 rich = richify("# Title\n\n| A | B |\n|---|---|\n| 1 | 2 |")
 payload = {"chat_id": chat_id, "rich_message": rich.to_dict()}
 
+### telegramify_rich() — split long Rich Messages automatically
+from telegramify_markdown import telegramify_rich
+items = telegramify_rich(very_long_md)
+for item in items:
+    payload = {"chat_id": chat_id, "rich_message": item.to_dict()}
+    # send via sendRichMessage
+
 ### Configuration
 from telegramify_markdown.config import get_runtime_config
 cfg = get_runtime_config()
@@ -481,6 +538,7 @@ cfg.mermaid.width = 1280
 - NEVER set parse_mode when sending with entities — they are mutually exclusive
 - All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
 - richify() returns an InputRichMessage payload for sendRichMessage, not text + entities
+- telegramify_rich() splits long Rich Messages at block boundaries; each chunk is valid HTML
 - Requires Python 3.10+
 ```
 
