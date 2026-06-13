@@ -53,6 +53,7 @@ poetry add "telegramify-markdown[mermaid]"
 
 - If you just want to send *static text* and don't want to worry about formatting → use **`convert()`**
 - If you are developing an *LLM application* or need to send potentially **super-long text** → use **`telegramify()`**
+- If you need **streaming output** (token-by-token, like ChatGPT typing) → use **`DraftStream`** (private) or **`EditStream`** (group)
 - If you need to split `convert()` output manually → use **`split_entities()`**
 - If your middleware only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`markdownify()`**
 - If you need to split long MarkdownV2 output safely → use **`split_markdownv2()`**
@@ -151,6 +152,53 @@ TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... pdm run test-live-rich
 
 The test sends a real `sendRichMessage` request and requires Telegram to return
 `Message.rich_message`.
+
+### `DraftStream` / `EditStream` — streaming LLM output (Bot API 9.3+)
+
+For token-by-token LLM output, `DraftStream` sends intermediate drafts via
+`sendMessageDraft` / `sendRichMessageDraft`, then finalizes with the complete
+message. Works in private chats. For group chats (no draft API), `EditStream`
+sends then edits the message.
+
+```python
+import asyncio
+from telegramify_markdown.stream import DraftStream
+
+async def stream_response(chat_id, token, llm_tokens):
+    async def send_draft(payload):
+        # Call sendRichMessageDraft with payload.rich_message.to_dict()
+        ...
+
+    async def send_final(payload):
+        # Call sendRichMessage with payload.rich_message.to_dict()
+        ...
+
+    async with DraftStream(
+        send_draft=send_draft,
+        send_final=send_final,
+        mode="rich",           # "rich" | "entity"
+        interval=0.3,          # seconds between draft updates
+        thinking_delay=0.5,    # show "Thinking..." before first content
+        keepalive_timeout=25.0,  # prevent draft expiry
+    ) as stream:
+        async for tok in llm_tokens:
+            stream.feed(tok)
+```
+
+For group/channel chats (draft API unavailable):
+
+```python
+from telegramify_markdown.stream import EditStream
+
+async with EditStream(
+    send_message=my_send_fn,   # async (payload) -> message_id
+    edit_message=my_edit_fn,   # async (message_id, payload) -> None
+    mode="rich",
+    interval=1.0,              # >= 1.0s enforced (Telegram edit rate limit)
+) as stream:
+    async for tok in llm_tokens:
+        stream.feed(tok)
+```
 
 ### `telegramify()` — long messages, code files, diagrams
 
@@ -457,92 +505,15 @@ Returns the length of a string in UTF-16 code units (what Telegram uses for offs
 
 ## 🤖 For AI Coding Assistants
 
-Copy this block into your AI assistant's context (e.g. `CLAUDE.md`, Cursor Rules, etc.) to get
-accurate code generation for telegramify-markdown:
+This project provides [`llms.txt`](llms.txt) and [`llms-full.txt`](llms-full.txt) for AI assistant context.
+Copy the relevant file into your assistant's context (e.g. `CLAUDE.md`, Cursor Rules) for
+accurate code generation.
 
-<details>
-<summary>Click to expand context block</summary>
-
-```markdown
-# telegramify-markdown integration guide
-
-## Install
-uv add telegramify-markdown  # or: pip install telegramify-markdown
-
-## API (v1.0.0+) — outputs plain text + MessageEntity, NOT MarkdownV2 strings
-
-### convert() — sync, single message
-from telegramify_markdown import convert
-text, entities = convert("**bold** and _italic_")
-bot.send_message(chat_id, text, entities=[e.to_dict() for e in entities])
-# Do NOT set parse_mode — entities replace it entirely.
-
-### telegramify() — async, auto-splits long text, extracts code blocks as files
-from telegramify_markdown import telegramify
-from telegramify_markdown.content import ContentType
-results = await telegramify(md, max_message_length=4090)
-for item in results:
-    if item.content_type == ContentType.TEXT:
-        bot.send_message(chat_id, item.text, entities=[e.to_dict() for e in item.entities])
-    elif item.content_type == ContentType.FILE:
-        bot.send_document(chat_id, (item.file_name, item.file_data))
-    elif item.content_type == ContentType.PHOTO:
-        bot.send_photo(chat_id, (item.file_name, item.file_data))
-
-### split_entities() — manual splitting for convert() output
-from telegramify_markdown import convert, split_entities
-text, entities = convert(long_md)
-for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4096):
-    bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
-
-### markdownify() — direct Markdown to MarkdownV2 string
-from telegramify_markdown import markdownify
-mdv2 = markdownify("**Bold** and `code`")
-bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
-# Use when your middleware only supports parse_mode, not entities parameter.
-# standardize() is an alias for markdownify().
-
-### split_markdownv2() — split rendered MarkdownV2 output
-from telegramify_markdown import convert, split_markdownv2
-text, entities = convert(long_md)
-for mdv2 in split_markdownv2(text, entities, max_utf16_len=4096):
-    bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
-
-### entities_to_markdownv2() — reverse convert() output to MarkdownV2
-from telegramify_markdown import convert, entities_to_markdownv2
-text, entities = convert("**Bold** and `code`")
-mdv2 = entities_to_markdownv2(text, entities)
-bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
-
-### richify() — Telegram Bot API 10.1 Rich Message payload
-from telegramify_markdown import richify
-rich = richify("# Title\n\n| A | B |\n|---|---|\n| 1 | 2 |")
-payload = {"chat_id": chat_id, "rich_message": rich.to_dict()}
-
-### telegramify_rich() — split long Rich Messages automatically
-from telegramify_markdown import telegramify_rich
-items = telegramify_rich(very_long_md)
-for item in items:
-    payload = {"chat_id": chat_id, "rich_message": item.to_dict()}
-    # send via sendRichMessage
-
-### Configuration
-from telegramify_markdown.config import get_runtime_config
-cfg = get_runtime_config()
-cfg.markdown_symbol.heading_level_1 = "📌"
-cfg.cite_expandable = True
-cfg.mermaid.width = 1280
-
-## Critical rules
-- entities must be passed as list[dict] via [e.to_dict() for e in entities], NEVER as JSON string
-- NEVER set parse_mode when sending with entities — they are mutually exclusive
-- All entity offsets are UTF-16 code units. Use utf16_len() to measure text length.
-- richify() returns an InputRichMessage payload for sendRichMessage, not text + entities
-- telegramify_rich() splits long Rich Messages at block boundaries; each chunk is valid HTML
-- Requires Python 3.10+
-```
-
-</details>
+Critical rules:
+- Pass entities as `[e.to_dict() for e in entities]` — never as JSON string
+- Never set `parse_mode` when sending with entities — they are mutually exclusive
+- `richify()` returns `InputRichMessage` for `sendRichMessage`, not text + entities
+- Entity offsets are UTF-16 code units. Use `utf16_len()` to measure.
 
 ## 🧸 Acknowledgement
 

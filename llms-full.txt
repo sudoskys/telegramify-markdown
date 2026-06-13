@@ -61,6 +61,54 @@ for chunk_text, chunk_entities in split_entities(text, entities, max_utf16_len=4
     bot.send_message(chat_id, chunk_text, entities=[e.to_dict() for e in chunk_entities])
 ```
 
+## Usage: DraftStream — streaming LLM output (Bot API 9.3+)
+
+For token-by-token LLM output in private chats. Sends intermediate drafts via
+sendMessageDraft / sendRichMessageDraft, then finalizes with the complete message.
+
+```python
+from telegramify_markdown.stream import DraftStream
+
+async def send_draft(payload):
+    # payload is RichDraftPayload with .rich_message.to_dict() and .draft_id
+    requests.post(f"https://api.telegram.org/bot{token}/sendRichMessageDraft",
+        json={"chat_id": chat_id, "draft_id": payload.draft_id,
+              "rich_message": payload.rich_message.to_dict()})
+
+async def send_final(payload):
+    # payload is RichFinalPayload with .rich_message.to_dict()
+    requests.post(f"https://api.telegram.org/bot{token}/sendRichMessage",
+        json={"chat_id": chat_id, "rich_message": payload.rich_message.to_dict()})
+
+async with DraftStream(
+    send_draft=send_draft,
+    send_final=send_final,
+    mode="rich",            # "rich" | "entity"
+    interval=0.3,           # seconds between draft updates
+    thinking_delay=0.5,     # show thinking indicator before first content
+    keepalive_timeout=25.0, # prevent draft expiry (~30s)
+) as stream:
+    async for tok in llm_response:
+        stream.feed(tok)
+```
+
+## Usage: EditStream — streaming in group chats
+
+For group/channel chats where draft API is unavailable. Sends message then edits it.
+
+```python
+from telegramify_markdown.stream import EditStream
+
+async with EditStream(
+    send_message=my_send_fn,   # async (payload) -> message_id
+    edit_message=my_edit_fn,   # async (message_id, payload) -> None
+    mode="rich",
+    interval=1.0,              # >= 1.0s enforced (Telegram edit rate limit)
+) as stream:
+    async for tok in llm_response:
+        stream.feed(tok)
+```
+
 ## Configuration
 
 ```python
@@ -246,3 +294,5 @@ telegramify() → list[Text | File | Photo]      # async pipeline
 - Entity offsets are in UTF-16 code units, not Python string indices. Use `utf16_len()` to measure.
 - The library is bot-framework agnostic. `MessageEntity.to_dict()` works with pyTelegramBotAPI, python-telegram-bot, aiogram, and any library that accepts entity dicts.
 - For messages that might exceed 4096 characters, use `telegramify()` (auto-splits) or `split_entities()` (manual split).
+- For streaming LLM output token-by-token, use `DraftStream` (private chats) or `EditStream` (groups). The library handles throttling, keepalive, and concurrency.
+- `DraftStream`/`EditStream` are async context managers. The caller provides send/edit callbacks — the library does NOT make HTTP calls itself.
