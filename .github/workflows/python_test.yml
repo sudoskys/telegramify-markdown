@@ -53,3 +53,13 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Run live Stream Draft contract test
+        if: env.HAS_TELEGRAM_LIVE == 'true'
+        run: |
+          pdm run -v test-live-stream
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Run Stream unit tests
+        run: |
+          pdm run -v test-stream
