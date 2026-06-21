@@ -58,6 +58,7 @@ poetry add "telegramify-markdown[mermaid]"
 - If your middleware only supports `parse_mode="MarkdownV2"` (no `entities` parameter) → use **`markdownify()`**
 - If you need to split long MarkdownV2 output safely → use **`split_markdownv2()`**
 - If you need finer control over the reverse conversion → use **`entities_to_markdownv2()`**
+- If you have `(text, entities)` from Telegram and want standard Markdown (no MarkdownV2 escaping) for Rich Messages → use **`entities_to_markdown()`**
 - If you want Telegram Bot API 10.1 structured Rich Messages → use **`richify()`**
 - If you need to split long Rich Messages automatically → use **`telegramify_rich()`**
 
@@ -318,6 +319,33 @@ bot.send_message(chat_id, mdv2, parse_mode="MarkdownV2")
 
 This handles all MarkdownV2 escaping rules correctly (different escaping for normal text, code/pre blocks, and URLs).
 
+### `entities_to_markdown()` — reverse conversion to standard Markdown
+
+If you have `(text, entities)` from Telegram (e.g., from `update.message`) and want a standard Markdown
+string without MarkdownV2 escaping — for use with `InputRichMessage(markdown=...)` or any standard
+Markdown consumer:
+
+```python
+from telegramify_markdown import entities_to_markdown, InputRichMessage
+import requests
+
+# text and entities come from Telegram's update.message
+md = entities_to_markdown(update.message.text, [
+    MessageEntity(**e) for e in update.message.entities
+])
+
+payload = InputRichMessage(markdown=md).to_dict()
+requests.post(
+    f"https://api.telegram.org/bot{token}/sendRichMessage",
+    json={"chat_id": chat_id, "rich_message": payload},
+    timeout=30,
+)
+```
+
+Unlike `entities_to_markdownv2()`, this does not escape `#`, `.`, `!`, etc. — the output is plain
+standard Markdown. Code/pre blocks and URL internals are still escaped because those are required by
+Markdown syntax itself.
+
 ## ⚙️ Configuration
 
 Customize heading symbols, link symbols, expandable citation behavior, and Mermaid rendering:
@@ -431,6 +459,17 @@ and only need splitting.
 
 Reverse conversion: takes plain text and entities, returns a MarkdownV2 string with correct escaping.
 Useful when you already have `(text, entities)` from `convert()` and need a MarkdownV2 string.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `text` | `str` | required | Plain text content |
+| `entities` | `list[MessageEntity] \| None` | `None` | Entity list (UTF-16 offsets) |
+
+### `entities_to_markdown(text, entities=None) -> str`
+
+Reverse conversion: takes plain text and entities, returns a standard Markdown string without
+MarkdownV2 escaping. Useful when you have `(text, entities)` from Telegram and want to send them
+via `InputRichMessage(markdown=...)`.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|

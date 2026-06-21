@@ -8,6 +8,7 @@ from telegramify_markdown.mdv2 import (
     _escape_code,
     _escape_markdownv2,
     _escape_url,
+    entities_to_markdown,
     entities_to_markdownv2,
     split_markdownv2,
 )
@@ -451,6 +452,123 @@ class PreBeforeBlockquoteTest(unittest.TestCase):
         ]
         result = entities_to_markdownv2(text, entities)
         self.assertIn(">quoted", result)
+
+
+# ── 第四层：entities_to_markdown（标准 Markdown，不转义普通文本）──
+
+
+class EntitiesToMarkdownTest(unittest.TestCase):
+    """entities_to_markdown：合并回标准 Markdown，不转义普通文本。"""
+
+    def test_no_escape_on_special_chars(self):
+        """# . ! 等普通文本字符不应被转义（issue #120 核心）"""
+        text = "# Hello World."
+        result = entities_to_markdown(text, [])
+        self.assertEqual(result, "# Hello World.")
+
+    def test_none_entities(self):
+        """无 entities 时不转义"""
+        text = "hello *world* [x](y)"
+        result = entities_to_markdown(text, None)
+        self.assertEqual(result, "hello *world* [x](y)")
+
+    def test_empty_text(self):
+        self.assertEqual(entities_to_markdown("", []), "")
+
+    def test_bold(self):
+        text = "hello world"
+        entities = [MessageEntity(type="bold", offset=0, length=5)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "*hello* world")
+
+    def test_italic(self):
+        text = "hello world"
+        entities = [MessageEntity(type="italic", offset=0, length=5)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "_hello_ world")
+
+    def test_issue_120_case(self):
+        """issue #120：# 和 . 不应被转义，格式标记正常插入"""
+        text = "# Hello World.\nbold italic"
+        entities = [
+            MessageEntity(type="bold", offset=15, length=4),
+            MessageEntity(type="italic", offset=20, length=6),
+        ]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "# Hello World.\n*bold* _italic_")
+
+    def test_code_internal_escape_preserved(self):
+        """code 内部仍转义 ` 和 \\"""
+        text = "a`b"
+        entities = [MessageEntity(type="code", offset=0, length=3)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "`a\\`b`")
+
+    def test_code_special_chars_not_escaped(self):
+        """code 内的 * _ 等不转义"""
+        text = "a*b_c"
+        entities = [MessageEntity(type="code", offset=0, length=5)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "`a*b_c`")
+
+    def test_url_internal_escape_preserved(self):
+        """URL 内部仍转义 ) 和 \\"""
+        text = "link"
+        entities = [MessageEntity(type="text_link", offset=0, length=4, url="https://a.com/b(c)")]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "[link](https://a.com/b(c\\))")
+
+    def test_nested_bold_italic(self):
+        text = "bold italic end"
+        entities = [
+            MessageEntity(type="bold", offset=0, length=15),
+            MessageEntity(type="italic", offset=5, length=6),
+        ]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "*bold _italic_ end*")
+
+    def test_adjacent_entities(self):
+        text = "bolditalic"
+        entities = [
+            MessageEntity(type="bold", offset=0, length=4),
+            MessageEntity(type="italic", offset=4, length=6),
+        ]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "*bold*_italic_")
+
+    def test_pre_with_lang(self):
+        text = "print(1)"
+        entities = [MessageEntity(type="pre", offset=0, length=8, language="python")]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "```python\nprint(1)\n```")
+
+    def test_blockquote_single_line(self):
+        text = "quoted text"
+        entities = [MessageEntity(type="blockquote", offset=0, length=11)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, ">quoted text")
+
+    def test_blockquote_multi_line(self):
+        text = "line1\nline2\nline3"
+        entities = [MessageEntity(type="blockquote", offset=0, length=utf16_len(text))]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, ">line1\n>line2\n>line3")
+
+    def test_emoji_utf16_offset(self):
+        """emoji 的 UTF-16 offset 正确性"""
+        text = "📌bold"
+        entities = [MessageEntity(type="bold", offset=2, length=4)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "📌*bold*")
+
+    def test_roundtrip_from_convert(self):
+        """convert() → entities_to_markdown 应保留原始结构"""
+        from telegramify_markdown.converter import convert
+
+        text, entities = convert("**bold** and _italic_")
+        result = entities_to_markdown(text, entities)
+        self.assertIn("*bold*", result)
+        self.assertIn("_italic_", result)
 
 
 if __name__ == "__main__":

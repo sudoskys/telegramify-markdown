@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 
 # MarkdownV2 普通文本需要转义的 20 个字符
@@ -82,17 +84,26 @@ _SIMPLE_MARKERS: dict[str, tuple[str, str]] = {
 _CODE_ENTITY_TYPES = frozenset({"code", "pre"})
 
 
-def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = None) -> str:
-    """将 (text, entities) 转换为 MarkdownV2 格式字符串。
+def _format_entities(
+    text: str,
+    entities: list[MessageEntity] | None,
+    *,
+    text_escape_fn: Callable[[str], str],
+) -> str:
+    """扫描线核心算法：将 (text, entities) 合并为带格式标记的字符串。
+
+    code/pre 内部统一使用 _escape_code，URL 内部统一使用 _escape_url，
+    普通文本区域使用 text_escape_fn 控制转义策略。
 
     :param text: 纯文本内容
     :param entities: MessageEntity 列表（UTF-16 offset/length）
-    :return: 可直接用于 Telegram parse_mode="MarkdownV2" 的字符串
+    :param text_escape_fn: 普通文本区域的转义函数
+    :return: 带格式标记的字符串
     """
     if not text:
         return ""
     if not entities:
-        return _escape_markdownv2(text)
+        return text_escape_fn(text)
 
     utf16_to_py = _utf16_offset_to_pyindex(text)
 
@@ -167,7 +178,7 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
 
     def _emit_segment(segment: str, seg_start_py: int) -> None:
         """输出文本段，在 \\n 后插入 blockquote 前缀。"""
-        escape_fn = _escape_code if active_code_entities else _escape_markdownv2
+        escape_fn = _escape_code if active_code_entities else text_escape_fn
         if not bq_ranges:
             parts.append(escape_fn(segment))
             return
@@ -259,6 +270,29 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
         _emit_text_between(prev_py, len(text), previous_event_closed_pre)
 
     return "".join(parts)
+
+
+def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = None) -> str:
+    """将 (text, entities) 转换为 MarkdownV2 格式字符串。
+
+    :param text: 纯文本内容
+    :param entities: MessageEntity 列表（UTF-16 offset/length）
+    :return: 可直接用于 Telegram parse_mode="MarkdownV2" 的字符串
+    """
+    return _format_entities(text, entities, text_escape_fn=_escape_markdownv2)
+
+
+def entities_to_markdown(text: str, entities: list[MessageEntity] | None = None) -> str:
+    """将 (text, entities) 合并回标准 Markdown 字符串（不转义普通文本）。
+
+    适用于 ``InputRichMessage(markdown=...)`` 或任何接受标准 Markdown 的场景。
+    code/pre 和 URL 内部的必要转义仍然保留，因为这些是 Markdown 语法的物理约束。
+
+    :param text: 纯文本内容
+    :param entities: MessageEntity 列表（UTF-16 offset/length）
+    :return: 标准 Markdown 字符串
+    """
+    return _format_entities(text, entities, text_escape_fn=lambda x: x)
 
 
 def split_markdownv2(
