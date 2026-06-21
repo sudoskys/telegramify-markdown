@@ -71,12 +71,22 @@ def _utf16_offset_to_pyindex(text: str) -> dict[int, int]:
     return mapping
 
 
-# entity type → (open_tag, close_tag) 的简单标记映射
-_SIMPLE_MARKERS: dict[str, tuple[str, str]] = {
+# MarkdownV2 标记（Telegram parse_mode="MarkdownV2" 规范）
+_MDV2_MARKERS: dict[str, tuple[str, str]] = {
     "bold": ("*", "*"),
     "italic": ("_", "_"),
     "underline": ("__", "__"),
     "strikethrough": ("~", "~"),
+    "spoiler": ("||", "||"),
+}
+
+# CommonMark 标记（用于 InputRichMessage(markdown=...)）
+# bold 用双星号、strikethrough 用双波浪线（CommonMark/GFM 语义）。
+# underline 在标准 Markdown 中无对应标记，退化为纯文本。
+_COMMONMARK_MARKERS: dict[str, tuple[str, str]] = {
+    "bold": ("**", "**"),
+    "italic": ("_", "_"),
+    "strikethrough": ("~~", "~~"),
     "spoiler": ("||", "||"),
 }
 
@@ -89,15 +99,18 @@ def _format_entities(
     entities: list[MessageEntity] | None,
     *,
     text_escape_fn: Callable[[str], str],
+    markers: dict[str, tuple[str, str]],
 ) -> str:
     """扫描线核心算法：将 (text, entities) 合并为带格式标记的字符串。
 
     code/pre 内部统一使用 _escape_code，URL 内部统一使用 _escape_url，
-    普通文本区域使用 text_escape_fn 控制转义策略。
+    普通文本区域使用 text_escape_fn 控制转义策略，
+    entity 标记使用 markers 控制风格。
 
     :param text: 纯文本内容
     :param entities: MessageEntity 列表（UTF-16 offset/length）
     :param text_escape_fn: 普通文本区域的转义函数
+    :param markers: entity type → (open, close) 标记映射
     :return: 带格式标记的字符串
     """
     if not text:
@@ -247,7 +260,7 @@ def _format_entities(
                 continue
             ent_id = id(ent)
             active_code_entities.discard(ent_id)
-            _emit_tag(_get_close_tag(ent), pos)
+            _emit_tag(_get_close_tag(ent, markers), pos)
             if ent.type == "pre":
                 closed_pre_at_pos = True
 
@@ -260,7 +273,7 @@ def _format_entities(
             ent_id = id(ent)
             if ent.type in _CODE_ENTITY_TYPES:
                 active_code_entities.add(ent_id)
-            _emit_tag(_get_open_tag(ent), pos)
+            _emit_tag(_get_open_tag(ent, markers), pos)
 
         previous_event_closed_pre = closed_pre_at_pos
         prev_py = pos
@@ -279,7 +292,7 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
     :param entities: MessageEntity 列表（UTF-16 offset/length）
     :return: 可直接用于 Telegram parse_mode="MarkdownV2" 的字符串
     """
-    return _format_entities(text, entities, text_escape_fn=_escape_markdownv2)
+    return _format_entities(text, entities, text_escape_fn=_escape_markdownv2, markers=_MDV2_MARKERS)
 
 
 def entities_to_markdown(text: str, entities: list[MessageEntity] | None = None) -> str:
@@ -292,7 +305,7 @@ def entities_to_markdown(text: str, entities: list[MessageEntity] | None = None)
     :param entities: MessageEntity 列表（UTF-16 offset/length）
     :return: 标准 Markdown 字符串
     """
-    return _format_entities(text, entities, text_escape_fn=lambda x: x)
+    return _format_entities(text, entities, text_escape_fn=lambda x: x, markers=_COMMONMARK_MARKERS)
 
 
 def split_markdownv2(
@@ -341,10 +354,10 @@ def split_markdownv2(
     return chunks
 
 
-def _get_open_tag(ent: MessageEntity) -> str:
+def _get_open_tag(ent: MessageEntity, markers: dict[str, tuple[str, str]]) -> str:
     """获取 entity 的开始标记。"""
-    if ent.type in _SIMPLE_MARKERS:
-        return _SIMPLE_MARKERS[ent.type][0]
+    if ent.type in markers:
+        return markers[ent.type][0]
     if ent.type == "code":
         return "`"
     if ent.type == "pre":
@@ -363,10 +376,10 @@ def _get_open_tag(ent: MessageEntity) -> str:
     return ""
 
 
-def _get_close_tag(ent: MessageEntity) -> str:
+def _get_close_tag(ent: MessageEntity, markers: dict[str, tuple[str, str]]) -> str:
     """获取 entity 的结束标记。"""
-    if ent.type in _SIMPLE_MARKERS:
-        return _SIMPLE_MARKERS[ent.type][1]
+    if ent.type in markers:
+        return markers[ent.type][1]
     if ent.type == "code":
         return "`"
     if ent.type == "pre":

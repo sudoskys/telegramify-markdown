@@ -343,8 +343,10 @@ requests.post(
 ```
 
 Unlike `entities_to_markdownv2()`, this does not escape `#`, `.`, `!`, etc. — the output is plain
-standard Markdown. Code/pre blocks and URL internals are still escaped because those are required by
-Markdown syntax itself.
+standard Markdown. Formatting markers follow CommonMark conventions (`**bold**`, `~~strikethrough~~`)
+rather than MarkdownV2 (`*bold*`, `~strikethrough~`). Underline entities degrade to plain text since
+standard Markdown has no underline syntax. Code/pre blocks and URL internals are still escaped
+because those are required by Markdown syntax itself.
 
 ## ⚙️ Configuration
 

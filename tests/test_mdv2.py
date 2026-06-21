@@ -479,13 +479,26 @@ class EntitiesToMarkdownTest(unittest.TestCase):
         text = "hello world"
         entities = [MessageEntity(type="bold", offset=0, length=5)]
         result = entities_to_markdown(text, entities)
-        self.assertEqual(result, "*hello* world")
+        self.assertEqual(result, "**hello** world")
 
     def test_italic(self):
         text = "hello world"
         entities = [MessageEntity(type="italic", offset=0, length=5)]
         result = entities_to_markdown(text, entities)
         self.assertEqual(result, "_hello_ world")
+
+    def test_strikethrough(self):
+        text = "deleted"
+        entities = [MessageEntity(type="strikethrough", offset=0, length=7)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "~~deleted~~")
+
+    def test_underline_degrades_to_plain(self):
+        """underline 在标准 Markdown 中无对应标记，退化为纯文本"""
+        text = "underlined"
+        entities = [MessageEntity(type="underline", offset=0, length=10)]
+        result = entities_to_markdown(text, entities)
+        self.assertEqual(result, "underlined")
 
     def test_issue_120_case(self):
         """issue #120：# 和 . 不应被转义，格式标记正常插入"""
@@ -495,7 +508,7 @@ class EntitiesToMarkdownTest(unittest.TestCase):
             MessageEntity(type="italic", offset=20, length=6),
         ]
         result = entities_to_markdown(text, entities)
-        self.assertEqual(result, "# Hello World.\n*bold* _italic_")
+        self.assertEqual(result, "# Hello World.\n**bold** _italic_")
 
     def test_code_internal_escape_preserved(self):
         """code 内部仍转义 ` 和 \\"""
@@ -525,7 +538,7 @@ class EntitiesToMarkdownTest(unittest.TestCase):
             MessageEntity(type="italic", offset=5, length=6),
         ]
         result = entities_to_markdown(text, entities)
-        self.assertEqual(result, "*bold _italic_ end*")
+        self.assertEqual(result, "**bold _italic_ end**")
 
     def test_adjacent_entities(self):
         text = "bolditalic"
@@ -534,7 +547,7 @@ class EntitiesToMarkdownTest(unittest.TestCase):
             MessageEntity(type="italic", offset=4, length=6),
         ]
         result = entities_to_markdown(text, entities)
-        self.assertEqual(result, "*bold*_italic_")
+        self.assertEqual(result, "**bold**_italic_")
 
     def test_pre_with_lang(self):
         text = "print(1)"
@@ -559,7 +572,7 @@ class EntitiesToMarkdownTest(unittest.TestCase):
         text = "📌bold"
         entities = [MessageEntity(type="bold", offset=2, length=4)]
         result = entities_to_markdown(text, entities)
-        self.assertEqual(result, "📌*bold*")
+        self.assertEqual(result, "📌**bold**")
 
     def test_roundtrip_from_convert(self):
         """convert() → entities_to_markdown 应保留原始结构"""
@@ -567,7 +580,7 @@ class EntitiesToMarkdownTest(unittest.TestCase):
 
         text, entities = convert("**bold** and _italic_")
         result = entities_to_markdown(text, entities)
-        self.assertIn("*bold*", result)
+        self.assertIn("**bold**", result)
         self.assertIn("_italic_", result)
 
 
