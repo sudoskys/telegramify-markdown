@@ -106,14 +106,12 @@ class _RichHtmlWalker:
         self._code_block_lang = ""
         self._code_block_parts: list[str] = []
 
-        self._in_table = False
         self._in_table_head = False
         self._in_table_cell = False
         self._table_alignments: tuple = ()
         self._table_rows: list[list[tuple[str, bool]]] = []
         self._current_row: list[tuple[str, bool]] = []
         self._cell_parts: list[str] = []
-        self._cell_col = 0
 
         self._image: _ImageCapture | None = None
 
@@ -216,7 +214,6 @@ class _RichHtmlWalker:
             self._in_table_head = True
         elif tag == "TableRow":
             self._current_row = []
-            self._cell_col = 0
         elif tag == "TableCell":
             self._cell_parts = []
             self._in_table_cell = True
@@ -258,6 +255,12 @@ class _RichHtmlWalker:
         elif tag == "Strikethrough":
             self._close_inline()
         elif tag == "Paragraph":
+            self._close_paragraph()
+            self._leave_block()
+        elif tag == "HtmlBlock":
+            # Must pair with _on_start's _enter_block, otherwise _block_depth
+            # never returns to 0 and everything after this merges into a single
+            # RichBlock in walk_blocks, defeating the byte and block budgets.
             self._close_paragraph()
             self._leave_block()
         elif tag == "Item":
@@ -435,15 +438,12 @@ class _RichHtmlWalker:
 
     def _on_start_table(self, alignments) -> None:
         self._close_paragraph()
-        self._in_table = True
         self._table_alignments = alignments if isinstance(alignments, tuple) else ()
         self._table_rows = []
-        self._emit("")
 
     def _on_end_table_cell(self) -> None:
         content = "".join(self._cell_parts)
         self._current_row.append((content, self._in_table_head))
-        self._cell_col += 1
         self._cell_parts = []
         self._in_table_cell = False
 
@@ -451,10 +451,8 @@ class _RichHtmlWalker:
         if self._current_row:
             self._table_rows.append(self._current_row)
         self._current_row = []
-        self._cell_col = 0
 
     def _on_end_table(self) -> None:
-        self._in_table = False
         rows: list[str] = []
         for row in self._table_rows:
             cells: list[str] = []
@@ -634,17 +632,10 @@ def _split_html(
     html_content = rich_message.html
     assert html_content is not None
 
-    # 快速路径: 不需要拆分
-    byte_len = len(html_content.encode("utf-8"))
-    if byte_len <= byte_limit:
-        # 还需要检查 block 数，但无法精确得知 block 数不做 re-walk
-        # 对于单 payload 直接返回（richify 的输出最多 ~500 block 时才到这里）
-        # 实际 re-walk 以确保 block 数正确
-        pass
-
-    # 用简化的 walker 从 HTML 重构 block 列表不可行（会违反 single-parse-boundary）
-    # 但 split_rich 接受的是已构建的 InputRichMessage，无法回溯到 markdown 源
-    # 因此对于 split_rich(已构建 payload) 的情况，用标签启发式拆分
+    # split_rich() receives an already-built payload and cannot get back to the
+    # markdown source, so top-level blocks are recovered heuristically from tags.
+    # For exact block boundaries use telegramify_rich(), which consumes the
+    # walk_blocks result directly.
     blocks = _heuristic_html_blocks(html_content)
 
     return _bin_blocks(
@@ -937,7 +928,13 @@ def _flush_chunk(
 
 
 def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]:
-    """Split oversized paragraph/pre blocks while preserving valid Rich HTML."""
+    """Split an oversized block while preserving valid Rich HTML.
+
+    Leaf blocks (``<p>`` / ``<pre>``) split by text; container blocks
+    (``<blockquote>`` / ``<ul>`` / ``<ol>`` / ``<table>``) split by direct child,
+    each part re-wrapped in the original open and close tags. An empty list means
+    the block could not be split, and the caller emits it as-is with a warning.
+    """
     html_text = block.html
 
     paragraph = _extract_wrapped_text(html_text, "p")
@@ -965,7 +962,101 @@ def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]
             if part
         ]
 
+    container = _extract_container(html_text)
+    if container is not None:
+        return _split_container(*container, byte_limit=byte_limit)
+
     return []
+
+
+_CONTAINER_OPEN_RE = re.compile(r"<(blockquote|ul|ol|table)(?:\s[^>]*)?>")
+_OL_START_RE = re.compile(r'start="(\d+)"')
+
+
+def _extract_container(html_text: str) -> tuple[str, str, str, str] | None:
+    """If the fragment is exactly one splittable container, return
+    (open tag, inner HTML, close tag, tag name)."""
+    match = _CONTAINER_OPEN_RE.match(html_text)
+    if not match:
+        return None
+    tag = match.group(1)
+    close_tag = f"</{tag}>"
+    if not html_text.endswith(close_tag):
+        return None
+    # The close tag must pair with this open tag, not with a nested element
+    # of the same name
+    if _find_tag_end(html_text, 0, tag) != len(html_text):
+        return None
+    return match.group(0), html_text[match.end() : -len(close_tag)], close_tag, tag
+
+
+def _split_container(
+    open_tag: str,
+    inner: str,
+    close_tag: str,
+    tag: str,
+    *,
+    byte_limit: int,
+) -> list[RichBlock]:
+    """Split a container by direct child, re-wrapping each part in its tags."""
+    budget = byte_limit - len((open_tag + close_tag).encode("utf-8"))
+    if budget <= 0:
+        return []
+
+    children = _heuristic_html_blocks(inner)
+    if not children:
+        return []
+
+    # Split any single oversized child first, otherwise binning just produces
+    # one oversized bin
+    expanded: list[RichBlock] = []
+    for child in children:
+        if child.byte_len > budget:
+            pieces = _split_oversized_block(child, budget)
+            expanded.extend(pieces or [child])
+        else:
+            expanded.append(child)
+
+    groups: list[list[RichBlock]] = []
+    current: list[RichBlock] = []
+    current_bytes = 0
+    for child in expanded:
+        if current and current_bytes + child.byte_len > budget:
+            groups.append(current)
+            current = []
+            current_bytes = 0
+        current.append(child)
+        current_bytes += child.byte_len
+    if current:
+        groups.append(current)
+
+    if len(groups) <= 1:
+        return []
+
+    blocks: list[RichBlock] = []
+    items_before = 0
+    for group in groups:
+        blocks.append(
+            _make_block(
+                _reopen_tag(open_tag, tag, items_before)
+                + "".join(child.html for child in group)
+                + close_tag
+            )
+        )
+        # Count direct children only: <li> inside a nested list does not
+        # consume an outer ordinal
+        items_before += sum(1 for child in group if child.html.startswith("<li"))
+    return blocks
+
+
+def _reopen_tag(open_tag: str, tag: str, items_before: int) -> str:
+    """Continue an ordered list from the previous part's numbering instead of
+    restarting at 1."""
+    if tag != "ol" or items_before == 0:
+        return open_tag
+    match = _OL_START_RE.search(open_tag)
+    start = int(match.group(1)) if match else 1
+    return f'<ol start="{start + items_before}">'
 
 
 def _make_block(html_text: str) -> RichBlock:

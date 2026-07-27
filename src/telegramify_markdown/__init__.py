@@ -6,6 +6,7 @@ import warnings
 from typing import Union
 
 from telegramify_markdown import config
+from telegramify_markdown.config import RenderConfig
 from telegramify_markdown.converter import convert as convert
 from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 from telegramify_markdown.content import ContentType, ContentTypes, ContentTrace, File, Photo, RichMessage, Text
@@ -23,6 +24,7 @@ __all__ = [
     "split_rich",
     "telegramify_rich",
     "config",
+    "RenderConfig",
     "MessageEntity",
     "InputRichMessage",
     "RichMessage",
@@ -43,6 +45,7 @@ def markdownify(
     max_line_length: int | None = None,
     normalize_whitespace: bool = False,
     latex_escape: bool = True,
+    config: RenderConfig | None = None,
 ) -> str:
     """Convert Markdown to a Telegram MarkdownV2 string.
 
@@ -51,6 +54,7 @@ def markdownify(
 
     :param max_line_length: Deprecated (ignored). Kept for 0.x compatibility.
     :param normalize_whitespace: Deprecated (ignored). Kept for 0.x compatibility.
+    :param config: Render configuration. Uses the global config if None.
     """
     if max_line_length is not None:
         warnings.warn(
@@ -66,7 +70,7 @@ def markdownify(
             DeprecationWarning,
             stacklevel=2,
         )
-    return entities_to_markdownv2(*convert(content, latex_escape=latex_escape))
+    return entities_to_markdownv2(*convert(content, latex_escape=latex_escape, config=config))
 
 
 def standardize(
@@ -75,6 +79,7 @@ def standardize(
     max_line_length: int | None = None,
     normalize_whitespace: bool = False,
     latex_escape: bool = True,
+    config: RenderConfig | None = None,
 ) -> str:
     """Alias for :func:`markdownify`, kept for 0.x compatibility."""
     return markdownify(
@@ -82,6 +87,7 @@ def standardize(
         max_line_length=max_line_length,
         normalize_whitespace=normalize_whitespace,
         latex_escape=latex_escape,
+        config=config,
     )
 
 
@@ -95,6 +101,7 @@ async def telegramify(
     latex_escape: bool = True,
     render_mermaid: bool = True,
     min_file_lines: int = 1,
+    config: RenderConfig | None = None,
 ) -> list[Union[Text, File, Photo]]:
     """Convert markdown to Telegram-ready content segments.
 
@@ -110,6 +117,9 @@ async def telegramify(
     :param min_file_lines: Minimum line count for a code block to be extracted
         as a separate file.  Set to ``0`` to disable file extraction entirely
         (all code blocks stay inline as ``pre`` entities).
+    :param config: Render configuration. Uses the global config if None.
+        Pass ``RenderConfig.isolated()`` to keep concurrent requests from
+        sharing symbol settings.
     :return: Ordered list of Text, File, or Photo objects ready for the Telegram Bot API.
     """
     if max_word_count is not None:
@@ -119,6 +129,7 @@ async def telegramify(
             DeprecationWarning,
             stacklevel=2,
         )
+        max_message_length = max_word_count
     if max_line_length is not None:
         warnings.warn(
             "max_line_length is deprecated and ignored in 1.x. "
@@ -133,7 +144,6 @@ async def telegramify(
             DeprecationWarning,
             stacklevel=2,
         )
-        max_message_length = max_word_count
 
     from telegramify_markdown.pipeline import process_markdown
 
@@ -143,4 +153,5 @@ async def telegramify(
         latex_escape=latex_escape,
         render_mermaid=render_mermaid,
         min_file_lines=min_file_lines,
+        config=config,
     )

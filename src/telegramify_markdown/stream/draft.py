@@ -14,6 +14,20 @@ from telegramify_markdown.stream.core import StreamCore
 
 logger = logging.getLogger(__name__)
 
+# Telegram's per-message text limit, counted in UTF-16 code units.
+_DRAFT_TEXT_LIMIT = 4096
+
+
+def _tail_by_utf16(text: str, limit: int) -> str:
+    """Return the tail of text within limit UTF-16 code units, never splitting
+    a surrogate pair."""
+    total = 0
+    for i in range(len(text) - 1, -1, -1):
+        total += 2 if ord(text[i]) > 0xFFFF else 1
+        if total > limit:
+            return text[i + 1 :]
+    return text
+
 
 @dataclasses.dataclass(slots=True)
 class EntityDraftPayload:
@@ -132,15 +146,20 @@ class DraftStream:
             return self._render_rich(buffer)
 
     def _render_entity(self, buffer: str):
-        """Entity 模式渲染：convert() + 尾部 4096 字符截断。"""
+        """Entity mode: convert(), then trim the tail to Telegram's 4096 limit."""
         from telegramify_markdown.converter import convert
+        from telegramify_markdown.entity import utf16_len
 
         text, entities = convert(buffer)
 
-        # sliding window: 只取尾部 4096 字符
-        # draft 是临时显示，截断后 entities 偏移会失效，直接丢弃
-        if len(text) > 4096:
-            text = text[-4096:]
+        # Sliding window: keep only the trailing 4096 UTF-16 code units.
+        # It has to be measured in UTF-16, not Python characters: astral
+        # characters such as emoji take two code units each, so truncating by
+        # character can emit twice the allowed length and Telegram rejects it.
+        # A draft is transient, and truncation invalidates entity offsets, so
+        # the entities are dropped.
+        if utf16_len(text) > _DRAFT_TEXT_LIMIT:
+            text = _tail_by_utf16(text, _DRAFT_TEXT_LIMIT)
             entities = []
 
         return EntityDraftPayload(

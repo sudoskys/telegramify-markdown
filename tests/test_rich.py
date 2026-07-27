@@ -361,5 +361,76 @@ class TelegramifyRichTest(unittest.TestCase):
         self.assertIsNotNone(rich.html)
 
 
+class HtmlBlockBoundaryTest(unittest.TestCase):
+    """HtmlBlock must leave the block scope it entered.
+
+    Without _leave_block, _block_depth never returns to 0 and everything after
+    an HTML block merges into a single RichBlock, defeating the byte and block
+    budgets.
+    """
+
+    def test_blocks_after_html_block_stay_separate(self):
+        blocks = _walk_blocks_from_markdown("para1\n\n<div>raw</div>\n\npara2\n\npara3")
+        self.assertEqual(len(blocks), 4)
+        self.assertEqual(blocks[-1].html, "<p>para3</p>")
+
+    def test_paragraph_after_html_block_is_not_glued(self):
+        html = richify("<div>raw</div>\n\npara2").html
+        self.assertIn("<p>para2</p>", html)
+
+
+class OversizedContainerSplitTest(unittest.TestCase):
+    """Oversized container blocks split by child instead of going out whole
+    for Telegram to reject."""
+
+    LIMIT = 4096
+
+    def _chunks(self, markdown: str):
+        from telegramify_markdown.rich import _bin_blocks
+
+        blocks = _walk_blocks_from_markdown(markdown)
+        return _bin_blocks(
+            blocks,
+            byte_limit=self.LIMIT,
+            block_limit=500,
+            is_rtl=None,
+            skip_entity_detection=None,
+            mode="html",
+        )
+
+    def _assert_within_limit(self, chunks):
+        self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertLessEqual(len(chunk.html.encode("utf-8")), self.LIMIT)
+
+    def test_oversized_blockquote(self):
+        self._assert_within_limit(self._chunks("> " + "x" * 10000))
+
+    def test_oversized_table_splits_by_row(self):
+        rows = "\n".join(f"| {'y' * 100} | {'z' * 100} |" for _ in range(60))
+        chunks = self._chunks("| a | b |\n|---|---|\n" + rows)
+        self._assert_within_limit(chunks)
+        for chunk in chunks:
+            self.assertTrue(chunk.html.startswith("<table>"))
+            self.assertTrue(chunk.html.endswith("</table>"))
+
+    def test_oversized_unordered_list_splits_by_item(self):
+        chunks = self._chunks("\n".join(f"- {'i' * 200}" for _ in range(60)))
+        self._assert_within_limit(chunks)
+        for chunk in chunks:
+            self.assertTrue(chunk.html.startswith("<ul>"))
+
+    def test_oversized_ordered_list_continues_numbering(self):
+        chunks = self._chunks("\n".join(f"{i + 1}. {'i' * 200}" for i in range(60)))
+        self._assert_within_limit(chunks)
+        self.assertTrue(chunks[0].html.startswith('<ol start="1">'))
+        first_items = chunks[0].html.count("<li>")
+        self.assertTrue(chunks[1].html.startswith(f'<ol start="{1 + first_items}">'))
+
+    def test_content_within_limit_is_untouched(self):
+        chunks = self._chunks("# t\n\npara\n\n- a\n- b\n")
+        self.assertEqual(len(chunks), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

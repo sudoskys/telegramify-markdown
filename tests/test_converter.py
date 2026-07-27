@@ -739,5 +739,246 @@ class TaskListMarkerTest(unittest.TestCase):
         self.assertIn("✅", text)
 
 
+class BlockSpacingAfterListTest(unittest.TestCase):
+    """A block after a list must keep the blank line the source had.
+
+    pyromark's End(List) range already includes the trailing blank line, so the
+    old "gap between previous block end and next block start" test always
+    concluded there was no blank line after a list.
+    """
+
+    def test_paragraph_after_list_keeps_blank_line(self):
+        text, _ = convert("- a\n- b\n\npara", latex_escape=False)
+        self.assertIn("\n\npara", text)
+
+    def test_ordered_list_then_heading_keeps_blank_line(self):
+        text, _ = convert("1. a\n2. b\n\n# h", latex_escape=False)
+        self.assertIn("\n\n", text.split("b")[1])
+
+    def test_all_block_kinds_after_list_keep_blank_line(self):
+        followers = ["para", "# h", "```py\nx=1\n```", "> q", "---", "$$e^x$$"]
+        for follower in followers:
+            with self.subTest(follower=follower):
+                text, _ = convert(f"- a\n- b\n\n{follower}", latex_escape=False)
+                self.assertIn("\n\n", text)
+
+    def test_tight_list_then_block_has_no_blank_line(self):
+        # No blank line in the source means none invented (a heading may
+        # interrupt a list)
+        text, _ = convert("- a\n- b\n# h", latex_escape=False)
+        self.assertNotIn("\n\n", text)
+
+
+class SpoilerCodeRegionTest(unittest.TestCase):
+    """Spoiler preprocessing must not rewrite code block content."""
+
+    def test_tilde_fence_not_rewritten(self):
+        text, entities = convert("~~~py\n||x||\n~~~", latex_escape=False)
+        self.assertEqual(text, "||x||")
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_indented_code_not_rewritten(self):
+        text, entities = convert("para\n\n    ||x||\n\ntail", latex_escape=False)
+        self.assertIn("||x||", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_tilde_inside_backtick_fence_does_not_close_it(self):
+        text, _ = convert("```\n~~~\n||a||\n```", latex_escape=False)
+        self.assertIn("||a||", text)
+
+    def test_shorter_fence_does_not_close_longer_one(self):
+        text, _ = convert("````\n||a||\n```\n||b||\n````", latex_escape=False)
+        self.assertIn("||a||", text)
+        self.assertIn("||b||", text)
+
+    def test_unterminated_fence_runs_to_end(self):
+        text, entities = convert("```\n||a||", latex_escape=False)
+        self.assertIn("||a||", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_spoiler_in_deeply_indented_list_still_works(self):
+        # A list item indented four spaces is not an indented code block, so
+        # the spoiler must still apply
+        text, entities = convert("- a\n    - ||x||\n", latex_escape=False)
+        self.assertIsNotNone(_find_entity(entities, "spoiler"))
+        self.assertNotIn("||", text)
+
+    def test_spoiler_in_paragraph_continuation_still_works(self):
+        text, entities = convert("para\n    ||x|| cont\n", latex_escape=False)
+        self.assertIsNotNone(_find_entity(entities, "spoiler"))
+
+
+class MultilineSpoilerTest(unittest.TestCase):
+    """An open tag alone on a line becomes a CommonMark HTML block, and the
+    whole span gets dropped."""
+
+    def test_newline_wrapped_spoiler_survives(self):
+        text, entities = convert("||\nsecret\n||", latex_escape=False)
+        spoiler = _find_entity(entities, "spoiler")
+        self.assertIsNotNone(spoiler)
+        self.assertEqual(_extract_entity_text(text, spoiler), "secret")
+
+    def test_multiline_content_preserved(self):
+        text, entities = convert("||\nline1\nline2\n||", latex_escape=False)
+        self.assertIn("line1", text)
+        self.assertIn("line2", text)
+        self.assertIsNotNone(_find_entity(entities, "spoiler"))
+
+
+class ImageInTableCellTest(unittest.TestCase):
+    """An image symbol in a cell must stay inside the rendered table."""
+
+    def test_image_symbol_stays_inside_table(self):
+        md = "| a |\n|---|\n| ![alt](https://e.com/i.png) |"
+        text, entities = convert(md, latex_escape=False)
+        pre = _find_entity(entities, "pre")
+        self.assertIsNotNone(pre)
+        # pre covering the whole span means the image symbol did not leak out
+        # ahead of the table
+        self.assertEqual(pre.offset, 0)
+        self.assertEqual(pre.length, utf16_len(text))
+        self.assertIn("🖼alt", text)
+
+
+class ListMarkerConfigTest(unittest.TestCase):
+    """@see https://github.com/sudoskys/telegramify-markdown/issues/116"""
+
+    def setUp(self):
+        from telegramify_markdown.config import get_runtime_config
+
+        self.symbol = get_runtime_config().markdown_symbol
+        self._saved = (self.symbol.unordered_list_item, self.symbol.ordered_list_suffix)
+
+    def tearDown(self):
+        self.symbol.unordered_list_item, self.symbol.ordered_list_suffix = self._saved
+
+    def test_default_is_unchanged(self):
+        text, _ = convert("- a\n- b", latex_escape=False)
+        self.assertIn("⦁ a", text)
+
+    def test_custom_unordered_marker(self):
+        self.symbol.unordered_list_item = "-"
+        text, _ = convert("- a\n- b", latex_escape=False)
+        self.assertIn("- a", text)
+        self.assertNotIn("⦁", text)
+
+    def test_custom_marker_applies_to_nested_items(self):
+        self.symbol.unordered_list_item = "•"
+        text, _ = convert("- a\n  - b", latex_escape=False)
+        self.assertIn("• a", text)
+        self.assertIn("  • b", text)
+
+    def test_custom_ordered_suffix(self):
+        self.symbol.ordered_list_suffix = ")"
+        text, _ = convert("1. a\n2. b", latex_escape=False)
+        self.assertIn("1) a", text)
+        self.assertIn("2) b", text)
+
+    def test_task_marker_still_replaces_custom_bullet(self):
+        self.symbol.unordered_list_item = "-"
+        text, _ = convert("- [x] done", latex_escape=False)
+        self.assertIn("✅", text)
+        self.assertNotIn("- [", text)
+        self.assertFalse(text.startswith("-"))
+
+
+class RenderConfigIsolationTest(unittest.TestCase):
+    """The global config is shared mutable state; isolated() hands out copies
+    that do not affect each other.
+
+    Mutating the global inside concurrent handlers crosses configurations:
+    pyTelegramBotAPI is multi-threaded by default, and on the asyncio side
+    "mutate global -> await -> render" always yields control in between.
+    """
+
+    def setUp(self):
+        from telegramify_markdown.config import get_runtime_config
+
+        self.symbol = get_runtime_config().markdown_symbol
+        self._saved = self.symbol.unordered_list_item
+
+    def tearDown(self):
+        self.symbol.unordered_list_item = self._saved
+
+    def test_bare_construction_still_returns_global(self):
+        # 1.x compatibility: RenderConfig() is equivalent to get_runtime_config()
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
+
+        self.assertIs(RenderConfig(), get_runtime_config())
+        self.assertIs(RenderConfig(), RenderConfig())
+
+    def test_repeated_construction_does_not_reset_settings(self):
+        from telegramify_markdown.config import RenderConfig
+
+        RenderConfig().markdown_symbol.unordered_list_item = "@"
+        self.assertEqual(RenderConfig().markdown_symbol.unordered_list_item, "@")
+
+    def test_isinstance_works(self):
+        # Under the decorator implementation RenderConfig was a function and
+        # isinstance raised TypeError
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
+
+        self.assertIsInstance(get_runtime_config(), RenderConfig)
+        self.assertIsInstance(RenderConfig.isolated(), RenderConfig)
+
+    def test_isolated_starts_from_defaults_and_stays_independent(self):
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
+
+        get_runtime_config().markdown_symbol.unordered_list_item = "@"
+        isolated = RenderConfig.isolated()
+        self.assertEqual(isolated.markdown_symbol.unordered_list_item, "⦁")
+
+        isolated.markdown_symbol.unordered_list_item = "*"
+        self.assertEqual(get_runtime_config().markdown_symbol.unordered_list_item, "@")
+
+    def test_copy_inherits_current_values_but_is_independent(self):
+        from telegramify_markdown.config import get_runtime_config
+
+        get_runtime_config().markdown_symbol.unordered_list_item = "@"
+        clone = get_runtime_config().copy()
+        self.assertEqual(clone.markdown_symbol.unordered_list_item, "@")
+
+        clone.markdown_symbol.unordered_list_item = "#"
+        self.assertEqual(get_runtime_config().markdown_symbol.unordered_list_item, "@")
+
+    def test_two_isolated_configs_render_differently(self):
+        from telegramify_markdown.config import RenderConfig
+
+        dash = RenderConfig.isolated()
+        dash.markdown_symbol.unordered_list_item = "-"
+        bullet = RenderConfig.isolated()
+        bullet.markdown_symbol.unordered_list_item = "•"
+
+        self.assertIn("- x", convert("- x", config=dash, latex_escape=False)[0])
+        self.assertIn("• x", convert("- x", config=bullet, latex_escape=False)[0])
+
+    def test_concurrent_threads_do_not_share_isolated_config(self):
+        import threading
+
+        from telegramify_markdown.config import RenderConfig
+
+        rendered = {}
+        aligned = threading.Barrier(2)
+
+        def handler(name: str, marker: str) -> None:
+            cfg = RenderConfig.isolated()
+            cfg.markdown_symbol.unordered_list_item = marker
+            aligned.wait()  # render only after both threads have configured,
+            # maximising the chance of crossing configurations
+            rendered[name] = convert("- item", config=cfg, latex_escape=False)[0].strip()
+
+        threads = [
+            threading.Thread(target=handler, args=("a", "-")),
+            threading.Thread(target=handler, args=("b", "•")),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(rendered["a"], "- item")
+        self.assertEqual(rendered["b"], "• item")
+
+
 if __name__ == "__main__":
     unittest.main()

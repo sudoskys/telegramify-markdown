@@ -12,46 +12,44 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
+
 from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 
 # MarkdownV2 普通文本需要转义的 20 个字符
-_MDV2_ESCAPE_CHARS = frozenset("_*[]()~`>#+-=|{}.!\\")
+_MDV2_ESCAPE_CHARS = "_*[]()~`>#+-=|{}.!\\"
 
 # code/pre 内只需转义的字符
-_CODE_ESCAPE_CHARS = frozenset("`\\")
+_CODE_ESCAPE_CHARS = "`\\"
 
 # URL 内只需转义的字符
-_URL_ESCAPE_CHARS = frozenset(")\\")
+_URL_ESCAPE_CHARS = ")\\"
+
+
+def _escape_table(chars: str) -> dict[int, str]:
+    return str.maketrans({ch: "\\" + ch for ch in chars})
+
+
+# A translation table runs in one C-level pass, 1.4-3.4x faster than appending
+# per character. Escaping is on the path of every text segment.
+_MDV2_TRANS = _escape_table(_MDV2_ESCAPE_CHARS)
+_CODE_TRANS = _escape_table(_CODE_ESCAPE_CHARS)
+_URL_TRANS = _escape_table(_URL_ESCAPE_CHARS)
 
 
 def _escape_markdownv2(text: str) -> str:
     """普通文本区域的 MarkdownV2 转义（20 个特殊字符）。"""
-    result = []
-    for ch in text:
-        if ch in _MDV2_ESCAPE_CHARS:
-            result.append("\\")
-        result.append(ch)
-    return "".join(result)
+    return text.translate(_MDV2_TRANS)
 
 
 def _escape_code(text: str) -> str:
     """code/pre 内部的转义（只转义 ` 和 \\）。"""
-    result = []
-    for ch in text:
-        if ch in _CODE_ESCAPE_CHARS:
-            result.append("\\")
-        result.append(ch)
-    return "".join(result)
+    return text.translate(_CODE_TRANS)
 
 
 def _escape_url(url: str) -> str:
     """URL 内部的转义（只转义 ) 和 \\）。"""
-    result = []
-    for ch in url:
-        if ch in _URL_ESCAPE_CHARS:
-            result.append("\\")
-        result.append(ch)
-    return "".join(result)
+    return url.translate(_URL_TRANS)
 
 
 def _utf16_offset_to_pyindex(text: str) -> dict[int, int]:
@@ -108,29 +106,31 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
         else:
             other_entities.append(ent)
 
-    # blockquote 查询辅助函数
-    def _bq_at(py_idx: int) -> str | None:
-        """返回 py_idx 位置的 blockquote 类型，不在 blockquote 内返回 None。"""
-        for s, e, t in bq_ranges:
-            if s <= py_idx < e:
-                return t
-        return None
-
-    def _is_expandable_start(py_idx: int) -> bool:
-        for s, _, t in bq_ranges:
-            if py_idx == s and t == "expandable_blockquote":
-                return True
-        return False
-
-    def _is_expandable_end(py_idx: int) -> bool:
-        for _, e, t in bq_ranges:
-            if py_idx == e and t == "expandable_blockquote":
-                return True
-        return False
-
+    # Blockquote position lookup runs once per line, so it must be constant or
+    # logarithmic. Scanning bq_ranges linearly degraded quote-heavy documents to
+    # O(lines x quotes) -- a 43KB all-quote document took 161ms.
+    expandable_starts = {
+        start_py for start_py, _, typ in bq_ranges if typ == "expandable_blockquote"
+    }
     expandable_end_positions = {
         end_py for _, end_py, typ in bq_ranges if typ == "expandable_blockquote"
     }
+
+    sorted_ranges = sorted(bq_ranges)
+    bq_starts = [start_py for start_py, _, _ in sorted_ranges]
+    # Prefix maximum of end positions: the rightmost end among ranges starting
+    # at or before py_idx. If it exceeds py_idx some range covers py_idx --
+    # ranges may nest, so the nearest one alone is not enough.
+    bq_max_end: list[int] = []
+    running_max = 0
+    for _, end_py, _typ in sorted_ranges:
+        running_max = max(running_max, end_py)
+        bq_max_end.append(running_max)
+
+    def _in_bq(py_idx: int) -> bool:
+        """Whether py_idx falls inside any blockquote range."""
+        k = bisect_right(bq_starts, py_idx)
+        return k > 0 and bq_max_end[k - 1] > py_idx
 
     # 构建扫描线事件
     events: list[tuple[int, int, int, int, MessageEntity]] = []
@@ -160,9 +160,9 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
 
     # 输出文本第一行的 blockquote 前缀（如果 position 0 在 blockquote 内）
     if bq_ranges:
-        if _is_expandable_start(0):
+        if 0 in expandable_starts:
             parts.append("**>")
-        elif _bq_at(0) is not None:
+        elif _in_bq(0):
             parts.append(">")
 
     def _emit_segment(segment: str, seg_start_py: int) -> None:
@@ -179,9 +179,9 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
                 parts.append("\n")
                 next_py = seg_start_py + i + 1
                 # 检查下一行的 blockquote 状态
-                if _is_expandable_start(next_py):
+                if next_py in expandable_starts:
                     parts.append("**>")
-                elif _bq_at(next_py) is not None:
+                elif _in_bq(next_py):
                     parts.append(">")
                 line_start = i + 1
         # 输出最后一段（\n 之后的剩余内容）
@@ -210,12 +210,9 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
             return
         # tag 中的 \n 后需要检查 blockquote
         # pos_py 是 tag 对应的原始文本边界位置
-        bq = _bq_at(pos_py)
-        if bq is None:
-            # pos_py 可能恰好在 blockquote 边界外，检查 pos_py-1
-            if pos_py > 0:
-                bq = _bq_at(pos_py - 1)
-        if bq:
+        # pos_py may land just outside the blockquote boundary; look one back
+        inside = _in_bq(pos_py) or (pos_py > 0 and _in_bq(pos_py - 1))
+        if inside:
             parts.append(tag.replace("\n", "\n>"))
         else:
             parts.append(tag)

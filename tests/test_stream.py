@@ -717,3 +717,27 @@ class TestDraftStreamSlidingWindow:
 
         assert payload.text == "Hello world"
         assert payload.entities == entities
+
+    def test_entity_truncation_counts_utf16_units(self):
+        """The sliding window counts UTF-16 code units, not Python characters.
+
+        Astral characters take two code units each, so truncating by character
+        emits twice the allowed length and Telegram rejects the draft.
+        """
+        from telegramify_markdown.entity import utf16_len
+        from telegramify_markdown.stream.draft import DraftStream
+
+        long_text = "😀" * 5000  # 5000 characters = 10000 UTF-16 code units
+
+        with patch("telegramify_markdown.converter.convert", return_value=(long_text, [])):
+            stream = DraftStream(
+                send_draft=AsyncMock(),
+                send_final=AsyncMock(),
+                mode="entity",
+                thinking_delay=None,
+            )
+            payload = stream._render_entity("x")
+
+        assert utf16_len(payload.text) <= 4096
+        # Must not split a surrogate pair
+        assert payload.text == "😀" * 2048
