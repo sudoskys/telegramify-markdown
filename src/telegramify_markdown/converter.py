@@ -26,100 +26,71 @@ STANDARD_OPTIONS = (
 # --- Preprocessing -----------------------------------------------------------
 
 _SPOILER_RE = re.compile(r"(?<![\\])\|\|(.+?)\|\|", re.DOTALL)
-_INLINE_CODE_RE = re.compile(r"(`[^`\n]+`)")
-_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
-_LIST_MARKER_RE = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)")
-_INDENTED_RE = re.compile(r"^(?: {4}|\t)")
 
 
-def _code_line_flags(text: str) -> list[bool]:
-    """Mark each line that belongs to a code block, so spoilers skip it.
+def _code_regions(text: str, options) -> list[tuple[int, int]]:
+    """UTF-8 byte ranges of the source that the parser treats as code.
 
-    This is not a full CommonMark block parse; it covers only the two shapes
-    that would otherwise corrupt user code:
-
-    - Fenced code: both ``` and ~~~ count. A closing fence must use the same
-      character and be no shorter than the opening one; an unclosed fence runs
-      to end of input, as CommonMark specifies. A single regex cannot express
-      that pairing, hence the line scan.
-    - Indented code: only when the previous line is blank and no list is open.
-      Without those two guards this misfires on two common shapes -- indented
-      paragraph continuations, and nested list items indented four spaces or
-      more -- which would silently drop ||spoiler|| at those positions.
+    Asking pyromark rather than scanning lines. A hand-rolled scanner has to
+    reimplement CommonMark's container prefixes to get this right: a fence can
+    sit inside a blockquote or a list item, a backtick fence's info string may
+    not contain a backtick, and indented code has its own rules about what
+    precedes it. Each of those was got wrong in turn, and getting it wrong
+    rewrites the user's code instead of a spoiler.
     """
-    lines = text.split("\n")
-    flags = [False] * len(lines)
-    fence: str | None = None
-    list_open = False
-    prev_blank = True
-
-    for i, line in enumerate(lines):
-        if fence is not None:
-            flags[i] = True
-            closing = _FENCE_RE.match(line)
-            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
-                fence = None
+    regions: list[tuple[int, int]] = []
+    for event in pyromark.events_with_range(text, options=options):
+        if not (
+            isinstance(event, tuple)
+            and len(event) == 2
+            and isinstance(event[1], dict)
+        ):
             continue
-
-        opening = _FENCE_RE.match(line)
-        if opening:
-            fence = opening.group(1)
-            flags[i] = True
-            prev_blank = False
+        payload, source_range = event
+        if not isinstance(payload, dict):
             continue
+        start = payload.get("Start")
+        is_code_block = isinstance(start, dict) and "CodeBlock" in start
+        if is_code_block or "Code" in payload:
+            regions.append((source_range["start"], source_range["end"]))
 
-        blank = not line.strip()
-        if blank:
-            prev_blank = True
-            continue
-
-        if _LIST_MARKER_RE.match(line):
-            list_open = True
-        elif not _INDENTED_RE.match(line) and not line.startswith((" ", "\t")):
-            list_open = False
-
-        if _INDENTED_RE.match(line) and prev_blank and not list_open:
-            flags[i] = True
-        prev_blank = False
-
-    return flags
+    regions.sort()
+    merged: list[tuple[int, int]] = []
+    for region_start, region_end in regions:
+        if merged and region_start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], region_end))
+        else:
+            merged.append((region_start, region_end))
+    return merged
 
 
-def _preprocess_spoilers(text: str) -> str:
+def _preprocess_spoilers(text: str, options=STANDARD_OPTIONS) -> str:
     """Replace ||spoiler|| with <tg-spoiler>spoiler</tg-spoiler>.
 
-    Skips content inside fenced code (``` and ~~~), indented code blocks,
-    and inline code spans.
+    Content inside fenced code, indented code, and inline code spans is left
+    alone. Documents without ``||`` skip the extra parse entirely.
+
+    ``options`` must match the ones the caller will parse the result with:
+    enabling footnotes, for instance, makes an indented block under a footnote
+    definition part of the footnote rather than an indented code block.
     """
-    code_line = _code_line_flags(text)
-    lines = text.split("\n")
+    if "||" not in text:
+        return text
 
-    # Group into runs of code / non-code lines: a spoiler may span lines, so
-    # substitution runs over a whole segment rather than line by line.
-    runs: list[str] = []
-    current: list[str] = []
-    current_is_code = False
-
-    def close_run() -> None:
-        joined = "\n".join(current)
-        runs.append(joined if current_is_code else _substitute_spoilers(joined))
-        current.clear()
-
-    for line, is_code in zip(lines, code_line):
-        if current and is_code != current_is_code:
-            close_run()
-        current_is_code = is_code
-        current.append(line)
-    if current:
-        close_run()
-    return "\n".join(runs)
-
-
-def _substitute_spoilers(segment: str) -> str:
-    """Replace ||...|| inside a non-code segment, still skipping code spans."""
-    parts = _INLINE_CODE_RE.split(segment)
-    for i in range(0, len(parts), 2):
-        parts[i] = _SPOILER_RE.sub(_spoiler_replacement, parts[i])
+    data = text.encode("utf-8")
+    parts: list[str] = []
+    cursor = 0
+    for region_start, region_end in _code_regions(text, options):
+        parts.append(
+            _SPOILER_RE.sub(
+                _spoiler_replacement, data[cursor:region_start].decode("utf-8")
+            )
+        )
+        parts.append(data[region_start:region_end].decode("utf-8"))
+        cursor = region_end
+    parts.append(
+        _SPOILER_RE.sub(_spoiler_replacement, data[cursor:].decode("utf-8"))
+    )
     return "".join(parts)
 
 
@@ -134,11 +105,14 @@ def _spoiler_replacement(match: re.Match) -> str:
     line as the text, so this stays inline HTML.
     """
     content = match.group(1)
-    stripped = content.strip("\n")
+    stripped = content.strip("\r\n")
     if not stripped:
         return match.group(0)
-    leading = "\n" * (len(content) - len(content.lstrip("\n")))
-    trailing = "\n" * (len(content) - len(content.rstrip("\n")))
+    # Move the exact line breaks back outside, CR included: stripping only "\n"
+    # leaves a leading "\r" behind, which still puts the open tag on its own
+    # line under CRLF input and loses the whole span.
+    leading = content[: len(content) - len(content.lstrip("\r\n"))]
+    trailing = content[len(content.rstrip("\r\n")) :]
     return f"{leading}<tg-spoiler>{stripped}</tg-spoiler>{trailing}"
 
 
@@ -842,14 +816,22 @@ class EventWalker:
         newlines = 0
         while i >= 0:
             ch = self._source_bytes[i : i + 1]
-            if ch == b"\n":
+            if ch == b"\r":
+                # CommonMark accepts a bare CR as a line ending. Inside a CRLF
+                # the LF already counted, so only a lone CR adds one.
+                if self._source_bytes[i + 1 : i + 2] == b"\n":
+                    i -= 1
+                    continue
                 newlines += 1
-                if newlines >= 2:
-                    return True
-            elif ch in (b"\r", b" ", b"\t", b">"):
-                pass
+            elif ch == b"\n":
+                newlines += 1
+            elif ch in (b" ", b"\t", b">"):
+                i -= 1
+                continue
             else:
                 return False
+            if newlines >= 2:
+                return True
             i -= 1
         return False
 

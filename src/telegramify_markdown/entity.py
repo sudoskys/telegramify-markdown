@@ -14,10 +14,12 @@ def utf16_len(text: str) -> int:
     # ASCII is the common case, and str.isascii() is a flag check in CPython (O(1)).
     # Non-ASCII goes through a C-level encode, 25-100x faster than a per-character
     # ord() loop. _TextBuffer.write calls this on every write, so it sits on the
-    # hot path of conversion.
+    # hot path of conversion. surrogatepass keeps lone surrogates working: a
+    # plain encode raises on them, while counting them is well defined (one
+    # code unit each) and callers may hold them from surrogateescape decoding.
     if text.isascii():
         return len(text)
-    return len(text.encode("utf-16-le")) >> 1
+    return len(text.encode("utf-16-le", "surrogatepass")) >> 1
 
 
 @dataclasses.dataclass(slots=True)

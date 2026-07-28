@@ -768,6 +768,22 @@ class BlockSpacingAfterListTest(unittest.TestCase):
         text, _ = convert("- a\n- b\n# h", latex_escape=False)
         self.assertNotIn("\n\n", text)
 
+    def test_all_line_endings_are_recognised(self):
+        # CommonMark accepts bare CR as a line ending; counting only LF loses
+        # the blank line on CR-terminated input.
+        for name, source, blank_expected in (
+            ("lf", "a\n\n# h", True),
+            ("lf-tight", "a\n# h", False),
+            ("cr", "a\r\r# h", True),
+            ("cr-tight", "a\r# h", False),
+            ("crlf", "a\r\n\r\n# h", True),
+            ("crlf-tight", "a\r\n# h", False),
+            ("cr-in-blockquote", "> a\r>\r> # h", True),
+        ):
+            with self.subTest(name=name):
+                text, _ = convert(source, latex_escape=False)
+                self.assertEqual("\n\n" in text, blank_expected, repr(text))
+
 
 class SpoilerCodeRegionTest(unittest.TestCase):
     """Spoiler preprocessing must not rewrite code block content."""
@@ -796,6 +812,70 @@ class SpoilerCodeRegionTest(unittest.TestCase):
         self.assertIn("||a||", text)
         self.assertIsNone(_find_entity(entities, "spoiler"))
 
+    def test_single_line_triple_backtick_does_not_open_a_fence(self):
+        # A backtick fence's info string may not contain a backtick, so
+        # ```x``` on one line is a code span, not the start of a block.
+        # Reading it as a fence swallowed everything up to the next fence and
+        # silently disabled spoilers in between.
+        md = '```print("x")```\n\n||secret||\n\n```py\ncode\n```\n'
+        text, entities = convert(md, latex_escape=False)
+        spoiler = _find_entity(entities, "spoiler")
+        self.assertIsNotNone(spoiler)
+        self.assertEqual(_extract_entity_text(text, spoiler), "secret")
+
+    def test_info_string_without_backtick_still_opens_a_fence(self):
+        text, entities = convert("```python title\n||x||\n```", latex_escape=False)
+        self.assertIn("||x||", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_fence_inside_blockquote_is_code(self):
+        # A fence can sit behind a container prefix. Missing that rewrites the
+        # quoted code instead of leaving it alone.
+        text, entities = convert("> ```\n> a || b || c\n> ```", latex_escape=False)
+        self.assertIn("a || b || c", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_fence_inside_list_item_is_code(self):
+        text, entities = convert("- ```\n  a || b || c\n  ```", latex_escape=False)
+        self.assertIn("a || b || c", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_multi_backtick_inline_code_is_skipped(self):
+        text, entities = convert("x ``a || b || c`` y", latex_escape=False)
+        self.assertIn("a || b || c", text)
+        self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_container_and_fence_shapes_never_rewrite_code(self):
+        # Every shape a hand-rolled line scanner got wrong. The parser decides
+        # what is code now, so these must all survive untouched.
+        for name, source in (
+            ("blockquote fence", "> ```\n> ||x||\n> ```"),
+            ("nested blockquote fence", "> > ```\n> > ||x||\n> > ```"),
+            ("list item fence", "- ```\n  ||x||\n  ```"),
+            ("indented code, many lines", "    a\n    ||x||"),
+            ("indented fence-looking code", "    ```\n    ||x||\n    ```"),
+            ("invalid closing fence", "```\na\n```oops\n||x||\n```"),
+            ("paragraph line that looks like a list", "para\n2. fake\n\n    ||x||"),
+            ("tab indented code", "\ta\n\t||x||"),
+        ):
+            with self.subTest(name=name):
+                text, entities = convert(source, latex_escape=False)
+                self.assertIn("||x||", text)
+                self.assertIsNone(_find_entity(entities, "spoiler"))
+
+    def test_spoiler_still_applies_outside_code(self):
+        for name, source in (
+            ("plain", "a ||x|| b"),
+            ("list item", "- ||x||"),
+            ("blockquote", "> ||x||"),
+            ("deeply indented list item", "- a\n    - ||x||"),
+            ("paragraph continuation", "p\n    ||x||"),
+            ("html block nearby", "<div>\n```\n</div>\n\n||x||"),
+        ):
+            with self.subTest(name=name):
+                _, entities = convert(source, latex_escape=False)
+                self.assertIsNotNone(_find_entity(entities, "spoiler"))
+
     def test_spoiler_in_deeply_indented_list_still_works(self):
         # A list item indented four spaces is not an indented code block, so
         # the spoiler must still apply
@@ -823,6 +903,16 @@ class MultilineSpoilerTest(unittest.TestCase):
         self.assertIn("line1", text)
         self.assertIn("line2", text)
         self.assertIsNotNone(_find_entity(entities, "spoiler"))
+
+    def test_crlf_wrapped_spoiler_survives(self):
+        # Stripping only "\n" leaves the leading "\r", which still puts the
+        # open tag alone on its line under CRLF input and drops the span.
+        for source in ("||\r\nsecret\r\n||", "||\rsecret\r||", "||\r\nsecret\n||"):
+            with self.subTest(source=source):
+                text, entities = convert(source, latex_escape=False)
+                spoiler = _find_entity(entities, "spoiler")
+                self.assertIsNotNone(spoiler)
+                self.assertEqual(_extract_entity_text(text, spoiler), "secret")
 
 
 class ImageInTableCellTest(unittest.TestCase):

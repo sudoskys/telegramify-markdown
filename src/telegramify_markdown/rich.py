@@ -577,7 +577,7 @@ def richify(
     preprocessed = markdown
     if latex_escape:
         preprocessed = _escape_latex(preprocessed)
-    preprocessed = _preprocess_spoilers(preprocessed)
+    preprocessed = _preprocess_spoilers(preprocessed, RICH_OPTIONS)
 
     events = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
     html_text = _RichHtmlWalker().walk(events)
@@ -597,7 +597,7 @@ def _walk_blocks_from_markdown(
     preprocessed = markdown
     if latex_escape:
         preprocessed = _escape_latex(preprocessed)
-    preprocessed = _preprocess_spoilers(preprocessed)
+    preprocessed = _preprocess_spoilers(preprocessed, RICH_OPTIONS)
     events = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
     return _RichHtmlWalker().walk_blocks(events)
 
@@ -879,17 +879,20 @@ def _bin_blocks(
                 current_bytes = 0
                 current_block_count = 0
 
-            split_blocks = _split_oversized_block(block, byte_limit)
-            if split_blocks:
-                for split_block in split_blocks:
-                    _flush_chunk(chunks, [split_block], mode, is_rtl, skip_entity_detection)
-            else:
-                logger.warning(
-                    "单个 block 超过字节限制 (%d > %d)，独立发出。Telegram 可能拒绝。",
-                    block.byte_len,
-                    byte_limit,
-                )
-                _flush_chunk(chunks, [block], mode, is_rtl, skip_entity_detection)
+            split_blocks = _split_oversized_block(block, byte_limit) or [block]
+            for split_block in split_blocks:
+                # A split can still leave an atomic child over the limit -- a
+                # single 40KB list item, say. Warn per surviving part rather
+                # than only when splitting fails outright, otherwise a partial
+                # success hides the payload Telegram will reject.
+                if split_block.byte_len > byte_limit:
+                    logger.warning(
+                        "Rich block exceeds the byte limit (%d > %d) and cannot be "
+                        "split further; sending it alone. Telegram may reject it.",
+                        split_block.byte_len,
+                        byte_limit,
+                    )
+                _flush_chunk(chunks, [split_block], mode, is_rtl, skip_entity_detection)
             continue
 
         # 检查是否会超出预算
@@ -969,8 +972,14 @@ def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]
     return []
 
 
-_CONTAINER_OPEN_RE = re.compile(r"<(blockquote|ul|ol|table)(?:\s[^>]*)?>")
-_OL_START_RE = re.compile(r'start="(\d+)"')
+# The attribute part tolerates a quoted value containing '>'. richify() always
+# escapes attributes, but split_rich() is public and may be handed HTML the
+# caller wrote, where a naive [^>]* would cut the open tag in the wrong place.
+_CONTAINER_OPEN_RE = re.compile(
+    r"""<(blockquote|ul|ol|table)(?:\s(?:"[^"]*"|'[^']*'|[^>"'])*)?>"""
+)
+_OL_START_RE = re.compile(r"""(?<![-\w])start\s*=\s*(?:"(\d+)"|'(\d+)')""")
+_OL_ANY_START_RE = re.compile(r"(?<![-\w])start\s*=")
 
 
 def _extract_container(html_text: str) -> tuple[str, str, str, str] | None:
@@ -999,12 +1008,20 @@ def _split_container(
     byte_limit: int,
 ) -> list[RichBlock]:
     """Split a container by direct child, re-wrapping each part in its tags."""
-    budget = byte_limit - len((open_tag + close_tag).encode("utf-8"))
-    if budget <= 0:
-        return []
-
     children = _heuristic_html_blocks(inner)
     if not children:
+        return []
+
+    # An <ol> continuation renumbers its opening tag, and a wider start number
+    # is a longer tag than the one we started from. Budget against the widest
+    # tag any part could get, or the last part overflows by those extra digits.
+    total_items = sum(1 for child in children if child.html.startswith("<li"))
+    widest_open = max(
+        len(open_tag.encode("utf-8")),
+        len(_reopen_tag(open_tag, tag, total_items).encode("utf-8")),
+    )
+    budget = byte_limit - widest_open - len(close_tag.encode("utf-8"))
+    if budget <= 0:
         return []
 
     # Split any single oversized child first, otherwise binning just produces
@@ -1051,12 +1068,27 @@ def _split_container(
 
 def _reopen_tag(open_tag: str, tag: str, items_before: int) -> str:
     """Continue an ordered list from the previous part's numbering instead of
-    restarting at 1."""
+    restarting at 1.
+
+    The start value is rewritten in place so any other attribute on the tag
+    survives. When the tag carries a ``start`` this cannot parse, the tag is
+    returned untouched: restarting the numbering is a display nit, whereas
+    appending a second ``start`` would emit invalid HTML.
+    """
     if tag != "ol" or items_before == 0:
         return open_tag
     match = _OL_START_RE.search(open_tag)
-    start = int(match.group(1)) if match else 1
-    return f'<ol start="{start + items_before}">'
+    if match:
+        group = 1 if match.group(1) is not None else 2
+        continued = int(match.group(group)) + items_before
+        return (
+            open_tag[: match.start(group)]
+            + str(continued)
+            + open_tag[match.end(group) :]
+        )
+    if _OL_ANY_START_RE.search(open_tag):
+        return open_tag
+    return f'<ol start="{1 + items_before}"' + open_tag[len("<ol") :]
 
 
 def _make_block(html_text: str) -> RichBlock:
