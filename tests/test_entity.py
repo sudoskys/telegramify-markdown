@@ -1,5 +1,4 @@
 import unittest
-
 from telegramify_markdown.entity import MessageEntity, utf16_len, split_entities
 
 
@@ -214,6 +213,42 @@ class SplitEntitiesTest(unittest.TestCase):
         self.assertEqual(combined, text)
         for chunk_text, _ in result:
             self.assertLessEqual(utf16_len(chunk_text), 4)
+
+
+class Utf16LenTest(unittest.TestCase):
+    """utf16_len must stay exactly equivalent to the per-character definition.
+
+    It is the primitive every entity offset is measured with, so a divergence
+    silently misplaces formatting rather than failing loudly.
+    """
+
+    @staticmethod
+    def _per_character(text: str) -> int:
+        total = 0
+        for ch in text:
+            total += 2 if ord(ch) > 0xFFFF else 1
+        return total
+
+    def test_matches_per_character_definition(self):
+        samples = [
+            "",
+            "abc",
+            "中文",
+            "😀",
+            "a\U0001f600b",
+            "🎉中a",
+            "\t\n ",
+        ]
+        for sample in samples:
+            with self.subTest(sample=sample):
+                self.assertEqual(utf16_len(sample), self._per_character(sample))
+
+    def test_lone_surrogates_are_counted_not_rejected(self):
+        # A plain utf-16-le encode raises on these. They reach the library from
+        # surrogateescape decoding, and 1.x counted them as one code unit.
+        for sample in ("\ud800", "\udfff", "a\ud800b", "".join(chr(c) for c in range(0xD800, 0xD810))):
+            with self.subTest(sample=repr(sample)):
+                self.assertEqual(utf16_len(sample), self._per_character(sample))
 
 
 if __name__ == "__main__":

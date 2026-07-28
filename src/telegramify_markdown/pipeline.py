@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from telegramify_markdown.config import RenderConfig
 from telegramify_markdown.converter import Segment, convert_with_segments
 from telegramify_markdown.entity import MessageEntity, split_entities, utf16_len
 from telegramify_markdown.logger import logger
@@ -102,6 +103,7 @@ async def process_markdown(
     latex_escape: bool = True,
     render_mermaid: bool = True,
     min_file_lines: int = 1,
+    config: RenderConfig | None = None,
 ) -> list[Text | File | Photo]:
     """Full async pipeline: markdown → list of sendable content pieces.
 
@@ -114,6 +116,7 @@ async def process_markdown(
     :param min_file_lines: Minimum line count for a code block to be extracted
         as a separate file.  Set to ``0`` to disable file extraction entirely
         (all code blocks stay inline as ``pre`` entities).
+    :param config: Render configuration. Uses the global config if None.
 
     Pipeline steps:
 
@@ -125,7 +128,7 @@ async def process_markdown(
     3. Return ordered list of Text | File | Photo
     """
     full_text, full_entities, segments = convert_with_segments(
-        content, latex_escape=latex_escape
+        content, latex_escape=latex_escape, config=config
     )
 
     result: list[Text | File | Photo] = []
@@ -164,7 +167,7 @@ async def process_markdown(
 
         # Handle special segment
         if seg.kind == "mermaid":
-            await _handle_mermaid(result, seg)
+            await _handle_mermaid(result, seg, config)
         elif seg.kind == "code_block":
             _handle_code_block(result, seg)
 
@@ -182,9 +185,11 @@ async def process_markdown(
         if text_chunk:
             _append_text_chunks(result, text_chunk, text_entities, max_message_length)
 
-    # If no output was generated, emit empty text
-    if not result and full_text.strip():
-        _append_text_chunks(result, full_text.strip(), full_entities, max_message_length)
+    # The two branches above already cover every non-empty span of text: each
+    # segment before the cursor reaches the end goes through _append_text_chunks,
+    # and so does the remainder after it. No fallback branch here on purpose --
+    # the earlier one paired full_text.strip() with unadjusted full_entities, so
+    # it would have emitted misaligned entities had it ever fired.
 
     return result
 
@@ -232,6 +237,7 @@ def _handle_code_block(
 async def _handle_mermaid(
     result: list[Text | File | Photo],
     seg: Segment,
+    config: RenderConfig | None = None,
 ) -> None:
     """Render a mermaid diagram as a Photo, or fall back to File."""
     from telegramify_markdown.mermaid import support_mermaid
@@ -251,8 +257,8 @@ async def _handle_mermaid(
     try:
         from telegramify_markdown.mermaid import render_mermaid, get_mermaid_live_url
 
-        img_data, _caption_url = await render_mermaid(raw_code)
-        edit_url = get_mermaid_live_url(raw_code)
+        img_data, _caption_url = await render_mermaid(raw_code, config=config)
+        edit_url = get_mermaid_live_url(raw_code, config)
         # 用 text_link entity 避免长 URL 撑爆 caption 长度限制
         caption = "Edit on mermaid.live"
         result.append(

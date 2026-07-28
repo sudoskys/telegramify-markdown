@@ -10,6 +10,7 @@ chosen and what was rejected. The two link in one direction: ADR frontmatter
 
 | PRD | Boundary | Owner |
 |---|---|---|
+| [render-config](./render-config.md) | Symbol/Mermaid configuration and its scoping | `src/telegramify_markdown/config.py` |
 | [rich-message](./rich-message.md) | Telegram Bot API 10.1 Rich Message output | `src/telegramify_markdown/rich.py` |
 
 ## System Architecture

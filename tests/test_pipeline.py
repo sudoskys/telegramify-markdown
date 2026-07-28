@@ -122,5 +122,77 @@ class ProcessMarkdownTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results[0].entities[0].language, "mermaid")
 
 
+class DeprecatedArgumentTest(unittest.IsolatedAsyncioTestCase):
+    """0.x compatibility parameters on telegramify().
+
+    max_message_length = max_word_count used to sit inside the
+    normalize_whitespace branch: the alias silently did nothing, and
+    normalize_whitespace=True set the length limit to None and then crashed.
+    """
+
+    async def test_max_word_count_still_limits_length(self):
+        import warnings
+
+        from telegramify_markdown import telegramify
+        from telegramify_markdown.entity import utf16_len
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            results = await telegramify("x\n\n" * 400, max_word_count=100)
+
+        self.assertGreater(len(results), 1)
+        for item in results:
+            self.assertLessEqual(utf16_len(item.text), 100)
+
+    async def test_normalize_whitespace_does_not_break_splitting(self):
+        import warnings
+
+        from telegramify_markdown import telegramify
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            results = await telegramify("hello\n\nworld", normalize_whitespace=True)
+
+        self.assertEqual(len(results), 1)
+        self.assertIn("hello", results[0].text)
+
+
+class ConfigThreadingTest(unittest.IsolatedAsyncioTestCase):
+    """config= must reach all the way down, or the parameter name promises
+    something it cannot deliver."""
+
+    async def test_telegramify_honours_isolated_config(self):
+        from telegramify_markdown import telegramify
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
+
+        cfg = RenderConfig.isolated()
+        cfg.markdown_symbol.unordered_list_item = "-"
+
+        results = await telegramify("- x", config=cfg)
+        self.assertIn("- x", results[0].text)
+        # The global was not modified by this call
+        self.assertEqual(
+            get_runtime_config().markdown_symbol.unordered_list_item, "⦁"
+        )
+
+    async def test_markdownify_honours_isolated_config(self):
+        from telegramify_markdown import markdownify
+        from telegramify_markdown.config import RenderConfig
+
+        cfg = RenderConfig.isolated()
+        cfg.markdown_symbol.unordered_list_item = "•"
+        self.assertIn("• x", markdownify("- x", config=cfg, latex_escape=False))
+
+    async def test_mermaid_settings_follow_the_given_config(self):
+        from telegramify_markdown.config import RenderConfig
+        from telegramify_markdown.mermaid import get_mermaid_ink_url
+
+        cfg = RenderConfig.isolated()
+        cfg.mermaid.width = 4242
+        self.assertIn("width=4242", get_mermaid_ink_url("graph TD\nA-->B", cfg))
+        # Without config= it still uses the global defaults
+        self.assertIn("width=1000", get_mermaid_ink_url("graph TD\nA-->B"))
+
+
 if __name__ == "__main__":
     unittest.main()

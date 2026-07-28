@@ -123,8 +123,29 @@ cfg.markdown_symbol.link = "🔗"
 cfg.markdown_symbol.image = "🖼"
 cfg.markdown_symbol.task_completed = "✅"
 cfg.markdown_symbol.task_uncompleted = "☑️"
+cfg.markdown_symbol.unordered_list_item = "⦁"  # or "-", "•", "*"
+cfg.markdown_symbol.ordered_list_suffix = "."  # renders "1. item"
 cfg.cite_expandable = True  # long quotes become expandable_blockquote
 ```
+
+get_runtime_config() returns a process-global config. It is shared mutable
+state: do not mutate it inside a request handler if concurrent requests use
+different symbols. Use an independent config and pass it in instead.
+
+```python
+from telegramify_markdown import RenderConfig
+
+cfg = RenderConfig.isolated()          # library defaults, independent
+# cfg = get_runtime_config().copy()    # or start from current global values
+cfg.markdown_symbol.unordered_list_item = "-"
+
+boxes = await telegramify(markdown, config=cfg)
+```
+
+config= is accepted by convert(), convert_with_segments(), markdownify(),
+standardize(), and telegramify() (which also applies cfg.mermaid to rendered
+diagrams). richify() and telegramify_rich() take no config: Rich HTML emits
+structural tags and reads no symbols.
 
 ## API Reference
 
@@ -135,13 +156,13 @@ Synchronous. Converts a Markdown string to plain text and a list of MessageEntit
 Parameters:
 - markdown (str): Raw Markdown text.
 - latex_escape (bool, default True): Convert LaTeX \(...\) and \[...\] to Unicode symbols.
-- config (RenderConfig | None): Custom config; uses global singleton if None.
+- config (RenderConfig | None): Render config; uses the process-global config if None. Use RenderConfig.isolated() for per-request symbols.
 
 Returns (text, entities):
 - text (str): Plain text with formatting removed.
 - entities (list[MessageEntity]): Telegram MessageEntity objects with UTF-16 offsets.
 
-### telegramify(content, *, max_message_length=4096, latex_escape=True) -> list[Text | File | Photo]
+### telegramify(content, *, max_message_length=4096, latex_escape=True, config=None) -> list[Text | File | Photo]
 
 Async. Full pipeline: converts Markdown, splits long messages, extracts code blocks as File
 objects, renders Mermaid diagrams as Photo objects.
@@ -150,6 +171,7 @@ Parameters:
 - content (str): Raw Markdown text.
 - max_message_length (int, default 4096): Maximum UTF-16 code units per text message.
 - latex_escape (bool, default True): Convert LaTeX to Unicode.
+- config (RenderConfig | None): Render config; also supplies Mermaid theme/width/scale/type.
 
 Returns an ordered list of Text, File, or Photo objects preserving the original document order.
 
