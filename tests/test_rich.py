@@ -56,6 +56,12 @@ class RichifyHtmlTest(unittest.TestCase):
             "<p><tg-spoiler>secret</tg-spoiler> <code>a&lt;b</code></p>",
         )
 
+    def test_prices_and_approximations_stay_text(self):
+        rich = richify("$10.49 (**~$11.20**), ~700 JPY (~$4.50)")
+        self.assertEqual(
+            rich.html, "<p>$10.49 (<b>~$11.20</b>), ~700 JPY (~$4.50)</p>"
+        )
+
     def test_blockquote_code_and_math(self):
         rich = richify("> quote\n\n```python\nprint(1)\n```\n\n$$x^2$$")
         self.assertEqual(
@@ -155,17 +161,12 @@ class WalkBlocksTest(unittest.TestCase):
     def test_walk_blocks_matches_walk(self):
         """walk_blocks 的 join 结果应与 walk 完全一致。"""
         md = "# H\n\nText **b**\n\n- a\n- b\n\n> q\n\n```\ncode\n```"
-        import pyromark
         from telegramify_markdown.rich import RICH_OPTIONS
-        from telegramify_markdown.converter import _preprocess_spoilers
+        from telegramify_markdown.converter import _parse
 
-        preprocessed = _preprocess_spoilers(md)
-        events = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
+        _, events = _parse(md, RICH_OPTIONS, latex_escape=False)
         walk_result = _RichHtmlWalker().walk(events)
-
-        # 重新解析（events 是 tuple, 消费后需要重新获取）
-        events2 = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
-        blocks = _RichHtmlWalker().walk_blocks(events2)
+        blocks = _RichHtmlWalker().walk_blocks(events)
         joined = "".join(b.html for b in blocks)
 
         self.assertEqual(joined, walk_result)

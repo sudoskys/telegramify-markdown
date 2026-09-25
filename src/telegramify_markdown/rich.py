@@ -20,8 +20,7 @@ import pyromark
 
 from telegramify_markdown.converter import (
     STANDARD_OPTIONS,
-    _escape_latex,
-    _preprocess_spoilers,
+    _parse,
     _validate_telegram_emoji,
 )
 
@@ -574,12 +573,7 @@ def richify(
     if mode != "html":
         raise ValueError("mode must be 'html' or 'markdown'")
 
-    preprocessed = markdown
-    if latex_escape:
-        preprocessed = _escape_latex(preprocessed)
-    preprocessed = _preprocess_spoilers(preprocessed, RICH_OPTIONS)
-
-    events = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
+    _, events = _parse(markdown, RICH_OPTIONS, latex_escape=latex_escape)
     html_text = _RichHtmlWalker().walk(events)
     return InputRichMessage(
         html=html_text,
@@ -594,11 +588,7 @@ def _walk_blocks_from_markdown(
     latex_escape: bool = False,
 ) -> list[RichBlock]:
     """预处理 + 解析 + walk，返回 RichBlock 列表。"""
-    preprocessed = markdown
-    if latex_escape:
-        preprocessed = _escape_latex(preprocessed)
-    preprocessed = _preprocess_spoilers(preprocessed, RICH_OPTIONS)
-    events = pyromark.events_with_range(preprocessed, options=RICH_OPTIONS)
+    _, events = _parse(markdown, RICH_OPTIONS, latex_escape=latex_escape)
     return _RichHtmlWalker().walk_blocks(events)
 
 

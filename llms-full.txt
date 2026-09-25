@@ -294,7 +294,7 @@ telegramify() → list[Text | File | Photo]      # async pipeline
 ## Supported Markdown features
 
 - Headings (Levels 1-4, bold with emoji prefix)
-- **Bold**, *Italic*, ~~Strikethrough~~
+- **Bold**, *Italic*, ~~Strikethrough~~ (a single ~, as in ~5 min, stays literal)
 - ||Spoiler||
 - [Links](url) and ![Images](url)
 - Telegram custom emoji ![emoji](tg://emoji?id=...)
