@@ -741,3 +741,74 @@ class TestDraftStreamSlidingWindow:
         assert utf16_len(payload.text) <= 4096
         # Must not split a surrogate pair
         assert payload.text == "😀" * 2048
+
+
+# ---------------------------------------------------------------------------
+# Render configuration: entity mode renders with the stream's config
+# ---------------------------------------------------------------------------
+
+
+class TestStreamRenderConfig:
+    """An isolated config passed to a stream reaches every entity payload, and
+    the global config stays as it was."""
+
+    @pytest.fixture
+    def dash_config(self):
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
+
+        global_marker = get_runtime_config().markdown_symbol.unordered_list_item
+        assert global_marker != "-"  # otherwise a missing config would go unnoticed
+        config = RenderConfig.isolated()
+        config.markdown_symbol.unordered_list_item = "-"
+        yield config
+        assert get_runtime_config().markdown_symbol.unordered_list_item == global_marker
+
+    @pytest.mark.asyncio
+    async def test_draft_stream_drafts_and_final_use_the_config(self, dash_config):
+        from telegramify_markdown.stream.draft import DraftStream
+
+        drafts, finals = [], []
+
+        async def send_draft(payload):
+            drafts.append(payload)
+
+        async def send_final(payload):
+            finals.append(payload)
+
+        async with DraftStream(
+            send_draft=send_draft,
+            send_final=send_final,
+            mode="entity",
+            interval=0.05,
+            thinking_delay=None,
+            config=dash_config,
+        ) as stream:
+            stream.feed("- item")
+            await asyncio.sleep(0.2)  # let at least one draft go out
+
+        assert drafts
+        assert all(draft.text.strip() == "- item" for draft in drafts)
+        assert [final.text.strip() for final in finals] == ["- item"]
+
+    @pytest.mark.asyncio
+    async def test_edit_stream_uses_the_config(self, dash_config):
+        from telegramify_markdown.stream.edit import EditStream
+
+        sent = []
+
+        async def send_message(payload):
+            sent.append(payload)
+            return 1
+
+        async def edit_message(message_id, payload):
+            sent.append(payload)
+
+        async with EditStream(
+            send_message=send_message,
+            edit_message=edit_message,
+            mode="entity",
+            config=dash_config,
+        ) as stream:
+            stream.feed("- item")
+
+        assert [payload.text.strip() for payload in sent] == ["- item"]

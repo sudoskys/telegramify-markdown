@@ -180,6 +180,7 @@ async def stream_response(chat_id, token, llm_tokens):
         interval=0.3,          # seconds between draft updates
         thinking_delay=0.5,    # show "Thinking..." before first content
         keepalive_timeout=25.0,  # prevent draft expiry
+        config=None,           # entity mode: RenderConfig for symbols (EditStream too)
     ) as stream:
         async for tok in llm_tokens:
             stream.feed(tok)
