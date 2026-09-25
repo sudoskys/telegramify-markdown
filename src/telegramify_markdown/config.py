@@ -1,13 +1,20 @@
-def singleton(cls):
-    """Singleton pattern decorator"""
-    instances = {}
-    
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-    
-    return get_instance
+"""Render configuration.
+
+``get_runtime_config()`` returns the process-global config; setting it once at
+startup is the common case. When rendering must vary per session or per thread,
+take an independent config with ``RenderConfig.isolated()`` and pass it to
+``convert(config=...)`` / ``telegramify(config=...)`` / ``markdownify(config=...)``.
+
+The global instance is shared mutable state: writing to it inside a handler is
+visible to every concurrent conversion that does not carry its own config.
+pyTelegramBotAPI runs handlers on multiple threads by default, and on the
+asyncio side "mutate global -> await -> render" always yields control in
+between. Per-request configuration requires isolated().
+"""
+
+from __future__ import annotations
+
+import copy
 
 
 class Symbol:
@@ -23,6 +30,11 @@ class Symbol:
         self.task_completed: str = "\N{WHITE HEAVY CHECK MARK}"  # ✅
         self.task_uncompleted: str = "\N{BALLOT BOX WITH CHECK}" # ☑️
         self.horizontal_rule: str = "————————"
+        # List markers: written after the indent, before the item text.
+        # Always plain text, never covered by an entity.
+        # @see https://github.com/sudoskys/telegramify-markdown/issues/116
+        self.unordered_list_item: str = "\N{Z NOTATION SPOT}"    # ⦁
+        self.ordered_list_suffix: str = "."
 
 
 class Mermaid:
@@ -33,12 +45,40 @@ class Mermaid:
         self.image_type: str = "webp"
 
 
-@singleton
 class RenderConfig:
-    def __init__(self):
-        self._markdown_symbol = Symbol()
-        self._mermaid = Mermaid()
-        self._cite_expandable = True
+    """Render configuration.
+
+    Bare construction returns the global instance, equivalent to
+    ``get_runtime_config()`` and matching 1.x behaviour. For configs that do not
+    affect each other, use :meth:`isolated`.
+    """
+
+    _global: RenderConfig  # created at import, below the class
+    _markdown_symbol: Symbol
+    _mermaid: Mermaid
+    _cite_expandable: bool
+
+    # No __init__ on purpose: repeated construction must not reset settings
+    # that have already been applied to the global instance.
+    def __new__(cls) -> RenderConfig:
+        return cls._global
+
+    def __reduce__(self) -> tuple:
+        # copy and pickle would otherwise rebuild through __new__, i.e. the global
+        return type(self).isolated, (), self.__dict__
+
+    @classmethod
+    def isolated(cls) -> RenderConfig:
+        """Build an independent config, sharing nothing with the global one."""
+        instance = super().__new__(cls)
+        instance._markdown_symbol = Symbol()
+        instance._mermaid = Mermaid()
+        instance._cite_expandable = True
+        return instance
+
+    def copy(self) -> RenderConfig:
+        """Copy this config into an independent one, symbol tables included."""
+        return copy.deepcopy(self)
 
     @property
     def markdown_symbol(self) -> Symbol:
@@ -55,6 +95,9 @@ class RenderConfig:
     @cite_expandable.setter
     def cite_expandable(self, value: bool):
         self._cite_expandable = value
+
+
+RenderConfig._global = RenderConfig.isolated()
 
 
 # Global accessor function for accessing the RenderConfig singleton

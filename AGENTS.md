@@ -39,7 +39,7 @@ always:
 - Keep core runtime dependencies minimal. The core converter depends on pyromark; Mermaid rendering uses optional Pillow and aiohttp.
 - Preserve all Telegram entity offsets and lengths as UTF-16 code units.
 - Add public API docstrings.
-- Prefer Chinese comments when comments are needed.
+- Write code comments and docstrings in English. Chat with the user in Chinese.
 - Do not create a PR for Rich Message changes until `pdm run test-live-rich` passes against the real Telegram Bot API with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ask first:

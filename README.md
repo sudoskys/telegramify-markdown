@@ -320,7 +320,7 @@ This handles all MarkdownV2 escaping rules correctly (different escaping for nor
 
 ## ⚙️ Configuration
 
-Customize heading symbols, link symbols, expandable citation behavior, and Mermaid rendering:
+Customize heading symbols, link symbols, list markers, expandable citation behavior, and Mermaid rendering:
 
 ```python
 from telegramify_markdown.config import get_runtime_config
@@ -328,6 +328,8 @@ from telegramify_markdown.config import get_runtime_config
 cfg = get_runtime_config()
 cfg.markdown_symbol.heading_level_1 = "📌"
 cfg.markdown_symbol.link = "🔗"
+cfg.markdown_symbol.unordered_list_item = "-"   # default "⦁"; try "•", "*", …
+cfg.markdown_symbol.ordered_list_suffix = "."   # renders "1. item"; ")" gives "1) item"
 cfg.cite_expandable = True  # Long quotes become expandable_blockquote
 cfg.mermaid.width = 1280
 cfg.mermaid.scale = 2
@@ -340,6 +342,31 @@ cfg.mermaid.image_type = "webp"
 # cfg.markdown_symbol.heading_level_3 = ""
 # cfg.markdown_symbol.heading_level_4 = ""
 ```
+
+List markers are plain text and carry no entity. Task list items keep using
+`task_completed` / `task_uncompleted` and replace the list marker entirely.
+
+`get_runtime_config()` returns a **process-global** config. Setting it once at
+startup is the common case. It is shared mutable state, so a bot that varies
+symbols per chat must not mutate it inside a handler — concurrent requests would
+read each other's values. Use an independent config instead and pass it in:
+
+```python
+from telegramify_markdown import RenderConfig, telegramify
+
+cfg = RenderConfig.isolated()          # library defaults, independent
+# cfg = get_runtime_config().copy()    # or: start from the current global values
+cfg.markdown_symbol.unordered_list_item = "-"
+
+boxes = await telegramify(markdown, config=cfg)
+```
+
+`config=` is accepted by `convert()`, `convert_with_segments()`, `markdownify()`,
+`standardize()`, and `telegramify()` (which also applies `cfg.mermaid` to
+rendered diagrams). `richify()` and `telegramify_rich()` take no config —
+Rich HTML emits structural tags and reads no symbols.
+
+See [docs/prd/render-config.md](./docs/prd/render-config.md) for the full contract.
 
 `telegramify()` picks up Mermaid settings from the runtime config. The default Mermaid width is `1000`.
 

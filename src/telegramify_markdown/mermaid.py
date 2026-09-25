@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import dataclasses
 import json
@@ -8,7 +7,7 @@ from typing import TYPE_CHECKING
 from typing import Union, Tuple
 from urllib.parse import urlencode
 
-from telegramify_markdown.config import get_runtime_config
+from telegramify_markdown.config import RenderConfig, get_runtime_config
 from telegramify_markdown.logger import logger
 
 if TYPE_CHECKING:
@@ -110,15 +109,21 @@ def safe_base64_encode(data):
     return base64.urlsafe_b64encode(data)
 
 
-def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None) -> str:
+def generate_pako(
+    graph_markdown: str,
+    mermaid_config: MermaidConfig = None,
+    config: RenderConfig | None = None,
+) -> str:
     """
     Generate the pako URL for the Mermaid graph.
     :param graph_markdown: Input Mermaid graph markdown
     :param mermaid_config: Mermaid configuration
+    :param config: RenderConfig; falls back to the global one when omitted
     :return: The pako URL
     """
     if mermaid_config is None:
-        mermaid_config = MermaidConfig(theme=get_runtime_config().mermaid.theme)
+        settings = (config or get_runtime_config()).mermaid
+        mermaid_config = MermaidConfig(theme=settings.theme)
     graph_data = {
         "code": graph_markdown,
         "mermaid": mermaid_config.__dict__
@@ -129,9 +134,9 @@ def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None) -> 
     return f"pako:{base64_encoded.decode('ascii')}"
 
 
-def _build_mermaid_ink_query() -> str:
-    """Build Mermaid Ink query parameters from runtime config."""
-    mermaid_config = get_runtime_config().mermaid
+def _build_mermaid_ink_query(config: RenderConfig | None = None) -> str:
+    """Build Mermaid Ink query parameters from the given (or global) config."""
+    mermaid_config = (config or get_runtime_config()).mermaid
     return urlencode(
         {
             "theme": mermaid_config.theme,
@@ -154,33 +159,36 @@ def b64_mermaid_url(diagram: str) -> str:
     return f'https://mermaid.ink/img/{diagram_encoded}?{_build_mermaid_ink_query()}'
 
 
-def get_mermaid_live_url(graph_markdown: str) -> str:
+def get_mermaid_live_url(graph_markdown: str, config: RenderConfig | None = None) -> str:
     """
     Get the Mermaid Live URL for the graph.
     Can be used to edit the graph in the browser.
-    :param graph_markdown:
-    :return:
+    :param graph_markdown: The Mermaid graph Markdown
+    :param config: RenderConfig; falls back to the global one when omitted
+    :return: Link
     """
-    return f'https://mermaid.live/edit/#{generate_pako(graph_markdown)}'
+    return f'https://mermaid.live/edit/#{generate_pako(graph_markdown, config=config)}'
 
 
-def get_mermaid_ink_url(graph_markdown: str) -> str:
+def get_mermaid_ink_url(graph_markdown: str, config: RenderConfig | None = None) -> str:
     """
     Get the Mermaid Ink URL for the graph.
     Can be used to download the image.
     :param graph_markdown: The Mermaid graph Markdown
+    :param config: RenderConfig; falls back to the global one when omitted
     :return: Link
     """
-    return f'https://mermaid.ink/img/{generate_pako(graph_markdown)}?{_build_mermaid_ink_query()}'
+    return f'https://mermaid.ink/img/{generate_pako(graph_markdown, config=config)}?{_build_mermaid_ink_query(config)}'
 
 
 async def render_mermaid(
         diagram: str,
         session: "ClientSession" = None,
+        config: RenderConfig | None = None,
 ) -> Tuple[BytesIO, str]:
     # render picture
-    img_url = get_mermaid_ink_url(diagram)
-    caption = get_mermaid_live_url(diagram)
+    img_url = get_mermaid_ink_url(diagram, config)
+    caption = get_mermaid_live_url(diagram, config)
     # Download the image
     img_data = await download_image(
         url=img_url,

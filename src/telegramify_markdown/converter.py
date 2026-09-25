@@ -26,21 +26,78 @@ STANDARD_OPTIONS = (
 # --- Preprocessing -----------------------------------------------------------
 
 _SPOILER_RE = re.compile(r"(?<![\\])\|\|(.+?)\|\|", re.DOTALL)
-_CODE_REGION_RE = re.compile(r"(```[\s\S]*?```|`[^`\n]+`)")
 
 
-def _preprocess_spoilers(text: str) -> str:
+def _code_regions(text: str, options) -> list[tuple[int, int]]:
+    """UTF-8 byte ranges of the source that the parser treats as code.
+
+    The ranges come in document order and never overlap. Asking the parser keeps
+    CommonMark's rules for fences inside containers and for indented code in one
+    place.
+    """
+    regions: list[tuple[int, int]] = []
+    for payload, source_range in pyromark.events_with_range(text, options=options):
+        if not isinstance(payload, dict):
+            continue
+        start = payload.get("Start")
+        is_code_block = isinstance(start, dict) and "CodeBlock" in start
+        if is_code_block or "Code" in payload:
+            regions.append((source_range["start"], source_range["end"]))
+    return regions
+
+
+def _preprocess_spoilers(text: str, options=STANDARD_OPTIONS) -> str:
     """Replace ||spoiler|| with <tg-spoiler>spoiler</tg-spoiler>.
 
-    Skips content inside code fences and inline code spans.
+    Content inside fenced code, indented code, and inline code spans is left
+    alone. Documents without ``||`` skip the extra parse entirely.
+
+    ``options`` must match the ones the caller will parse the result with:
+    enabling footnotes, for instance, makes an indented block under a footnote
+    definition part of the footnote rather than an indented code block.
     """
-    parts = _CODE_REGION_RE.split(text)
-    result: list[str] = []
-    for i, part in enumerate(parts):
-        if i % 2 == 0:  # Not inside code
-            part = _SPOILER_RE.sub(r"<tg-spoiler>\1</tg-spoiler>", part)
-        result.append(part)
-    return "".join(result)
+    if "||" not in text:
+        return text
+
+    data = text.encode("utf-8")
+    parts: list[str] = []
+    cursor = 0
+    for region_start, region_end in _code_regions(text, options):
+        parts.append(
+            _SPOILER_RE.sub(
+                _spoiler_replacement, data[cursor:region_start].decode("utf-8")
+            )
+        )
+        parts.append(data[region_start:region_end].decode("utf-8"))
+        cursor = region_end
+    parts.append(
+        _SPOILER_RE.sub(_spoiler_replacement, data[cursor:].decode("utf-8"))
+    )
+    return "".join(parts)
+
+
+# A line break plus the blockquote markers that open the next line. Indentation
+# alone stays with the text: in front of the tag it could start indented code.
+_LINE_BREAK = r"(?:\r\n?|\n)(?:[ \t]*>[ \t]?)*"
+_SPOILER_EDGES_RE = re.compile(
+    rf"((?:[ \t]*{_LINE_BREAK})*)(.*?)((?:{_LINE_BREAK}[ \t]*)*)", re.DOTALL
+)
+
+
+def _spoiler_replacement(match: re.Match) -> str:
+    """Wrap ||...|| in <tg-spoiler>, keeping the open tag off a line of its own.
+
+    CommonMark reads a line holding nothing but a complete open tag as an HTML
+    block (type 7), which the converter drops. Line breaks at either edge of the
+    content, with the whitespace and blockquote markers around them, therefore
+    stay outside the tags.
+    """
+    edges = _SPOILER_EDGES_RE.fullmatch(match.group(1))
+    assert edges is not None  # every group may be empty, so any content matches
+    leading, body, trailing = edges.groups()
+    if not body:
+        return match.group(0)
+    return f"{leading}<tg-spoiler>{body}</tg-spoiler>{trailing}"
 
 
 def _validate_telegram_emoji(url: str) -> Optional[str]:
@@ -57,16 +114,20 @@ _LATEX_MATH_P = re.compile(r"\\\[(.*?)\\\]", re.DOTALL)
 _LATEX_INLINE_P = re.compile(r"\\\((.*?)\\\)", re.DOTALL)
 
 
+# Common LaTeX commands plus the full symbol tables, used to decide whether a
+# fragment is worth running through LaTeX conversion.
+_LATEX_PROBE_SYMBOLS = (
+    (r"\frac", r"\sqrt", r"\begin")
+    + tuple(LATEX_SYMBOLS.keys())
+    + tuple(NOT_MAP.keys())
+    + tuple(LATEX_STYLES.keys())
+)
+
+
 def _contains_latex_symbols(content: str) -> bool:
     if len(content) < 5:
         return False
-    latex_symbols = (
-        (r"\frac", r"\sqrt", r"\begin")
-        + tuple(LATEX_SYMBOLS.keys())
-        + tuple(NOT_MAP.keys())
-        + tuple(LATEX_STYLES.keys())
-    )
-    return any(symbol in content for symbol in latex_symbols)
+    return any(symbol in content for symbol in _LATEX_PROBE_SYMBOLS)
 
 
 def _escape_latex(text: str) -> str:
@@ -113,15 +174,17 @@ class Segment:
 class _TextBuffer:
     """Accumulates plain text and tracks the current UTF-16 offset."""
 
-    __slots__ = ("_parts", "_utf16_offset")
+    __slots__ = ("_parts", "_utf16_offset", "_py_offset")
 
     def __init__(self) -> None:
         self._parts: list[str] = []
         self._utf16_offset: int = 0
+        self._py_offset: int = 0
 
     def write(self, text: str) -> None:
         self._parts.append(text)
         self._utf16_offset += utf16_len(text)
+        self._py_offset += len(text)
 
     @property
     def utf16_offset(self) -> int:
@@ -129,7 +192,7 @@ class _TextBuffer:
 
     @property
     def py_offset(self) -> int:
-        return sum(len(p) for p in self._parts)
+        return self._py_offset
 
     def trailing_newline_count(self) -> int:
         """Count trailing newline characters in the buffer."""
@@ -143,10 +206,11 @@ class _TextBuffer:
         return count
 
     def pop_last(self) -> str:
-        """移除并返回最后写入的部分。用于替换刚写入的 bullet 前缀。"""
+        """Remove and return the last written part, to replace a bullet prefix."""
         if self._parts:
             part = self._parts.pop()
             self._utf16_offset -= utf16_len(part)
+            self._py_offset -= len(part)
             return part
         return ""
 
@@ -184,14 +248,11 @@ class EventWalker:
 
         # Block-level state
         self._block_count: int = 0  # For paragraph spacing
-        self._last_block_end_source: int | None = None
+        self._last_block_start: int = -1  # Lower bound of the blank-line scan
         self._list_stack: list[int | None] = []  # None=unordered, int=next_number
-        self._item_started: bool = False
         self._item_indent: str = ""  # 当前 item 的缩进，用于 task list marker 替换
 
         # Table state
-        self._in_table: bool = False
-        self._table_alignments: tuple = ()
         self._table_rows: list[list[str]] = []
         self._current_row: list[str] = []
         self._cell_parts: list[str] = []
@@ -204,7 +265,6 @@ class EventWalker:
         self._code_block_start_source: int | None = None
 
         # Heading state
-        self._in_heading: bool = False
         self._heading_entities: list[str] = []
 
         # Blockquote state
@@ -247,7 +307,7 @@ class EventWalker:
         if "Start" in event:
             self._on_start(event["Start"], source_range)
         elif "End" in event:
-            self._on_end(event["End"], source_range)
+            self._on_end(event["End"])
         elif "Text" in event:
             self._on_text(event["Text"])
         elif "Code" in event:
@@ -302,14 +362,13 @@ class EventWalker:
             elif "List" in tag:
                 self._on_start_list(tag["List"], source_start)
             elif "Table" in tag:
-                self._on_start_table(tag["Table"], source_start)
+                self._on_start_table(source_start)
             elif "FootnoteDefinition" in tag:
                 self._ensure_block_spacing(source_start)
 
     # -- End events ------------------------------------------------------------
 
-    def _on_end(self, tag, source_range: dict[str, int] | None = None) -> None:
-        source_end = self._source_end(source_range)
+    def _on_end(self, tag) -> None:
         if tag == "Strong":
             self._pop_entity("bold")
         elif tag == "Emphasis":
@@ -317,13 +376,13 @@ class EventWalker:
         elif tag == "Strikethrough":
             self._pop_entity("strikethrough")
         elif tag == "Paragraph":
-            self._on_end_paragraph(source_end)
+            self._on_end_paragraph()
         elif tag == "Item":
             self._on_end_item()
         elif tag == "CodeBlock":
-            self._on_end_code_block(source_end)
+            self._on_end_code_block()
         elif tag == "Table":
-            self._on_end_table(source_end)
+            self._on_end_table()
         elif tag == "TableCell":
             self._on_end_table_cell()
         elif tag == "TableRow":
@@ -338,11 +397,11 @@ class EventWalker:
             pass
         elif isinstance(tag, dict):
             if "Heading" in tag:
-                self._on_end_heading(source_end)
+                self._on_end_heading()
             elif "BlockQuote" in tag:
-                self._on_end_blockquote(source_end)
+                self._on_end_blockquote()
             elif "List" in tag:
-                self._on_end_list(source_end)
+                self._on_end_list()
 
     # -- Inline events ---------------------------------------------------------
 
@@ -373,7 +432,7 @@ class EventWalker:
     def _on_rule(self, source_range: dict[str, int] | None = None) -> None:
         self._ensure_block_spacing(self._source_start(source_range))
         self._buf.write(self._config.markdown_symbol.horizontal_rule)
-        self._mark_block_end(self._source_end(source_range))
+        self._mark_block_end()
 
     def _on_inline_code(self, code: str) -> None:
         if self._in_table_cell:
@@ -405,7 +464,7 @@ class EventWalker:
         length = self._buf.utf16_offset - start
         if length > 0:
             self._entities.append(MessageEntity(type="pre", offset=start, length=length))
-        self._mark_block_end(self._source_end(source_range))
+        self._mark_block_end()
 
     def _on_inline_html(self, html: str) -> None:
         tag = html.strip().lower()
@@ -456,14 +515,12 @@ class EventWalker:
         self._heading_entities = self._HEADING_ENTITIES.get(level, ["bold"])
         for etype in self._heading_entities:
             self._push_entity(etype)
-        self._in_heading = True
 
-    def _on_end_heading(self, source_end: int | None = None) -> None:
+    def _on_end_heading(self) -> None:
         for etype in reversed(self._heading_entities):
             self._pop_entity(etype)
         self._heading_entities = []
-        self._in_heading = False
-        self._mark_block_end(source_end)
+        self._mark_block_end()
 
     # -- Paragraph -------------------------------------------------------------
 
@@ -471,9 +528,9 @@ class EventWalker:
         if not self._list_stack:
             self._ensure_block_spacing(source_start)
 
-    def _on_end_paragraph(self, source_end: int | None = None) -> None:
+    def _on_end_paragraph(self) -> None:
         if not self._list_stack:
-            self._mark_block_end(source_end)
+            self._mark_block_end()
         elif self._buf.trailing_newline_count() == 0:
             # loose list 中段落结束时写入换行，避免多段落粘连
             self._buf.write("\n")
@@ -489,7 +546,7 @@ class EventWalker:
         else:
             self._code_block_lang = ""
 
-    def _on_end_code_block(self, source_end: int | None = None) -> None:
+    def _on_end_code_block(self) -> None:
         self._in_code_block = False
         raw_code = "".join(self._code_block_parts)
         # Strip single trailing newline (pulldown-cmark adds one)
@@ -531,7 +588,7 @@ class EventWalker:
             )
         )
 
-        self._mark_block_end(source_end)
+        self._mark_block_end()
         self._code_block_lang = ""
         self._code_block_parts = []
         self._code_block_start_source = None
@@ -543,7 +600,7 @@ class EventWalker:
         scope = _EntityScope("blockquote", self._buf.utf16_offset)
         self._blockquote_scopes.append(scope)
 
-    def _on_end_blockquote(self, source_end: int | None = None) -> None:
+    def _on_end_blockquote(self) -> None:
         if self._blockquote_scopes:
             scope = self._blockquote_scopes.pop()
             length = self._buf.utf16_offset - scope.start_offset
@@ -555,7 +612,7 @@ class EventWalker:
                         length=length,
                     )
                 )
-        self._mark_block_end(source_end)
+        self._mark_block_end()
 
     # -- Links -----------------------------------------------------------------
 
@@ -576,7 +633,13 @@ class EventWalker:
         if emoji_id:
             self._push_entity("custom_emoji", custom_emoji_id=emoji_id)
         else:
-            self._buf.write(self._config.markdown_symbol.image)
+            # Route through _on_text rather than writing _buf directly: inside a
+            # table cell the image symbol must land in _cell_parts, otherwise it
+            # leaks out ahead of the rendered table and skews the column widths.
+            self._on_text(self._config.markdown_symbol.image)
+            # Inside a cell _buf does not advance, so the entity ends up
+            # zero-length and _finalize_entity drops it. Still push it: without
+            # it End(Image)'s _pop_entity_any would close an outer scope.
             self._push_entity("text_link", url=dest_url)
 
     # -- Lists -----------------------------------------------------------------
@@ -600,30 +663,29 @@ class EventWalker:
         self._item_indent = indent
         if current_list is not None:
             # Ordered list
-            self._buf.write(f"{indent}{current_list}. ")
+            suffix = self._config.markdown_symbol.ordered_list_suffix
+            self._buf.write(f"{indent}{current_list}{suffix} ")
             self._list_stack[-1] = current_list + 1
         else:
             # Unordered list
-            self._buf.write(f"{indent}⦁ ")
-        self._item_started = True
+            marker = self._config.markdown_symbol.unordered_list_item
+            self._buf.write(f"{indent}{marker} ")
 
     def _on_end_item(self) -> None:
         if self._buf.trailing_newline_count() == 0:
             self._buf.write("\n")
-        self._item_started = False
 
-    def _on_end_list(self, source_end: int | None = None) -> None:
+    def _on_end_list(self) -> None:
         if self._list_stack:
             self._list_stack.pop()
         if not self._list_stack:
-            self._mark_block_end(source_end)
+            self._mark_block_end()
 
     # -- Tables ----------------------------------------------------------------
 
-    def _on_start_table(self, alignments, source_start: int | None = None) -> None:
+    def _on_start_table(self, source_start: int | None = None) -> None:
+        # The text table renders as fixed-width columns and ignores alignment
         self._ensure_block_spacing(source_start)
-        self._in_table = True
-        self._table_alignments = alignments if isinstance(alignments, tuple) else ()
         self._table_rows = []
 
     def _on_end_table_cell(self) -> None:
@@ -635,8 +697,7 @@ class EventWalker:
         self._table_rows.append(self._current_row)
         self._current_row = []
 
-    def _on_end_table(self, source_end: int | None = None) -> None:
-        self._in_table = False
+    def _on_end_table(self) -> None:
         table_text = self._format_table(self._table_rows)
 
         start = self._buf.utf16_offset
@@ -645,7 +706,7 @@ class EventWalker:
         if length > 0:
             self._entities.append(MessageEntity(type="pre", offset=start, length=length))
         self._table_rows = []
-        self._mark_block_end(source_end)
+        self._mark_block_end()
 
     def _format_table(self, rows: list[list[str]]) -> str:
         if not rows:
@@ -717,22 +778,40 @@ class EventWalker:
     def _source_start(source_range: dict[str, int] | None) -> int | None:
         return source_range.get("start") if source_range else None
 
-    @staticmethod
-    def _source_end(source_range: dict[str, int] | None) -> int | None:
-        return source_range.get("end") if source_range else None
-
-    def _mark_block_end(self, source_end: int | None = None) -> None:
+    def _mark_block_end(self) -> None:
         self._block_count += 1
-        if source_end is not None:
-            self._last_block_end_source = source_end
 
     def _has_extra_blank_line(self, next_block_start: int) -> bool:
-        if self._last_block_end_source is None:
-            return False
-        if next_block_start <= self._last_block_end_source:
-            return False
-        gap = self._source_bytes[self._last_block_end_source:next_block_start]
-        return b"\n" in gap or b"\r" in gap
+        """Whether the source holds a blank line just before next_block_start.
+
+        Scans back from next_block_start, skipping indentation and blockquote
+        ``>`` markers while counting line breaks. Block ranges cannot answer
+        this: pyromark's List range swallows the blank line after the list. The
+        scan stops at the previous block's start, so nested containers, which
+        open one marker apart, do not rescan the same prefix.
+        """
+        i = next_block_start - 1
+        newlines = 0
+        while i > self._last_block_start:
+            ch = self._source_bytes[i : i + 1]
+            if ch == b"\r":
+                # CommonMark accepts a bare CR as a line ending. Inside a CRLF
+                # the LF already counted, so only a lone CR adds one.
+                if self._source_bytes[i + 1 : i + 2] == b"\n":
+                    i -= 1
+                    continue
+                newlines += 1
+            elif ch == b"\n":
+                newlines += 1
+            elif ch in (b" ", b"\t", b">"):
+                i -= 1
+                continue
+            else:
+                return False
+            if newlines >= 2:
+                return True
+            i -= 1
+        return False
 
     def _ensure_block_spacing(self, next_block_start: int | None = None) -> None:
         """Ensure block spacing, preserving whether the source had an extra blank line."""
@@ -746,6 +825,8 @@ class EventWalker:
             needed = desired - trailing
             if needed > 0:
                 self._buf.write("\n" * needed)
+        if next_block_start is not None:
+            self._last_block_start = next_block_start
 
 
 # --- Public API ---------------------------------------------------------------

@@ -9,7 +9,7 @@ via send_message, then updates it with edit_message on each throttle tick.
 from __future__ import annotations
 
 import logging
-from typing import Awaitable, Callable, Literal, Optional
+from typing import Callable, Literal, Optional
 
 from telegramify_markdown.stream.core import StreamCore
 from telegramify_markdown.stream.draft import (

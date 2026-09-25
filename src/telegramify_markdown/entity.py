@@ -11,10 +11,11 @@ def utf16_len(text: str) -> int:
     not Python str characters. Characters outside the BMP (codepoint > 0xFFFF)
     take 2 UTF-16 code units (a surrogate pair); all others take 1.
     """
-    count = 0
-    for ch in text:
-        count += 2 if ord(ch) > 0xFFFF else 1
-    return count
+    # surrogatepass counts a lone surrogate as one code unit; a plain encode
+    # raises on it.
+    if text.isascii():
+        return len(text)
+    return len(text.encode("utf-16-le", "surrogatepass")) >> 1
 
 
 @dataclasses.dataclass(slots=True)
