@@ -287,6 +287,11 @@ produce multiple payloads when the input exceeds these limits.
 - An oversized paragraph, preformatted code block, or Rich Markdown paragraph is
   split into multiple valid chunks. Rich HTML wrapper tags are preserved on each
   chunk.
+- A split paragraph keeps its inline formatting and line breaks. Cuts prefer the
+  point after a `<br/>`, then after whitespace; the inline tags open at a cut
+  are closed there and reopened in the next chunk. A paragraph that cannot be
+  cut without breaking a tag (malformed caller HTML, or one tag larger than the
+  budget) falls back to a plain-text split with a warning log.
 - An oversized Rich HTML block that the library cannot split safely is emitted
   as-is with a warning log. The caller is responsible for handling Telegram
   rejection.

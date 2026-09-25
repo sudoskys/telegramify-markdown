@@ -350,7 +350,21 @@ $$E = mc^2$$
         md = "\n\n".join(paragraphs)
         items = telegramify_rich(md, skip_entity_detection=True)
         self.assertGreater(len(items), 1, "Expected multiple chunks for 550 paragraphs")
+        self._assert_chunks_accepted(items)
 
+    def test_split_formatted_paragraph_chunks_accepted_by_send_rich_message(self):
+        """An oversized bold paragraph is cut at a line inside <b>, which the next
+        chunk reopens; Telegram accepts every chunk."""
+        from telegramify_markdown import telegramify_rich
+
+        md = "**" + "\n".join(f"line {i} in bold" for i in range(2500)) + "**"
+        items = telegramify_rich(md, skip_entity_detection=True)
+        self.assertGreater(len(items), 1, "Expected the paragraph to be split")
+        for item in items:
+            self.assertTrue(item.rich_message.html.startswith("<p><b>"))
+        self._assert_chunks_accepted(items)
+
+    def _assert_chunks_accepted(self, items):
         message_ids = []
         try:
             for item in items:

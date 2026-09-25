@@ -940,14 +940,19 @@ def _split_oversized_block(
     paragraph = _extract_wrapped_text(html_text, "p")
     if paragraph is not None:
         budget = byte_limit - len("<p></p>".encode("utf-8"))
-        return [
-            _make_block(f"<p>{_escape_text(part)}</p>")
-            for part in _split_text_by_escaped_utf8_bytes(
-                _html_fragment_to_text(paragraph),
-                budget,
+        parts = _split_inline_html(paragraph, budget)
+        if parts is None:
+            logger.warning(
+                "Paragraph cannot be split without breaking a tag; splitting its "
+                "plain text instead, which drops its formatting."
             )
-            if part
-        ]
+            parts = [
+                _escape_text(part)
+                for part in _split_text_by_escaped_utf8_bytes(
+                    _html_fragment_to_text(paragraph), budget
+                )
+            ]
+        return [_make_block(f"<p>{part}</p>") for part in parts if part]
 
     pre = _extract_pre_text(html_text)
     if pre is not None:
@@ -1110,6 +1115,92 @@ def _extract_pre_text(html_text: str) -> tuple[str, str, str] | None:
     if not match:
         return None
     return match.group(1), match.group(2), match.group(3)
+
+
+# One token of inline Rich HTML: a tag (a quoted attribute value may hold '>'),
+# a character reference, a whitespace run, or a run of other text. Runs stay
+# short so that a part can end close to its byte budget.
+_INLINE_TOKEN_RE = re.compile(
+    r"""</?([A-Za-z][A-Za-z0-9-]*)(?:\s(?:"[^"]*"|'[^']*'|[^>"'])*)?/?>"""
+    r"|&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);"
+    r"|\s{1,64}"
+    r"|[^<&\s]{1,64}"
+    r"|[<&]"
+)
+_VOID_TAGS = frozenset({"br", "hr", "img", "wbr"})
+
+
+def _inline_tokens(fragment: str) -> list[tuple[str, int, str, str]]:
+    """(token, UTF-8 size, kind, lowercase tag name or "") per inline token."""
+    tokens = []
+    for match in _INLINE_TOKEN_RE.finditer(fragment):
+        token, name = match.group(0), (match.group(1) or "").lower()
+        if not name:
+            kind = "space" if token.isspace() else "text"
+        elif token.startswith("</"):
+            kind = "close"
+        elif name == "br":
+            kind = "br"
+        elif token.endswith("/>") or name in _VOID_TAGS:
+            kind = "void"
+        else:
+            kind = "open"
+        tokens.append((token, len(token.encode("utf-8")), kind, name))
+    return tokens
+
+
+def _split_inline_html(fragment: str, budget: int) -> list[str] | None:
+    """Split inline Rich HTML into parts of at most ``budget`` UTF-8 bytes each.
+
+    A cut closes the tags open at that point and reopens them at the start of
+    the next part, so every part is well-formed and keeps its formatting. Cuts
+    prefer the point after a ``<br/>``, then after whitespace, then any token
+    boundary. Returns None when the fragment is not well-formed, or when a part
+    cannot hold one token beside the tags it has to reopen and close.
+    """
+    tokens = _inline_tokens(fragment)
+    parts: list[str] = []
+    carried: tuple[tuple[str, str], ...] = ()  # (name, open tag) open at the cut
+    start = 0
+    while start < len(tokens):
+        stack = carried
+        size = sum(len(tag.encode("utf-8")) for _, tag in stack)
+        reserve = sum(len(name) + 3 for name, _ in stack)  # bytes of the closers
+        line_cut = space_cut = None
+        end = start
+        while end < len(tokens):
+            token, token_size, kind, name = tokens[end]
+            if kind == "close":
+                if not stack or stack[-1][0] != name:
+                    return None
+                next_stack, next_reserve = stack[:-1], reserve - len(name) - 3
+            elif kind == "open":
+                next_stack, next_reserve = stack + ((name, token),), reserve + len(name) + 3
+            else:
+                next_stack, next_reserve = stack, reserve
+            if size + token_size + next_reserve > budget:
+                break
+            size, stack, reserve = size + token_size, next_stack, next_reserve
+            end += 1
+            if kind == "br":
+                line_cut = (end, stack)
+            elif kind == "space":
+                space_cut = (end, stack)
+        if end == len(tokens):
+            if stack:
+                return None
+            cut, cut_stack = end, stack
+        elif end == start:
+            return None
+        else:
+            cut, cut_stack = line_cut or space_cut or (end, stack)
+        parts.append(
+            "".join(tag for _, tag in carried)
+            + "".join(token for token, _, _, _ in tokens[start:cut])
+            + "".join(f"</{name}>" for name, _ in reversed(cut_stack))
+        )
+        start, carried = cut, cut_stack
+    return parts
 
 
 def _split_text_by_utf8_bytes(text: str, byte_limit: int) -> list[str]:
