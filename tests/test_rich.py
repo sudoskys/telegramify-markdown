@@ -537,5 +537,48 @@ class CallerAuthoredHtmlSplitTest(unittest.TestCase):
         )
 
 
+class OversizedParagraphFormattingTest(unittest.TestCase):
+    """An oversized paragraph splits without losing its inline formatting."""
+
+    @classmethod
+    def setUpClass(cls):
+        markdown = "\n".join(
+            f"> line {i} has **bold{i}** and [link](https://e.com/{i})" for i in range(3000)
+        )
+        cls.whole = richify(markdown).html
+        cls.parts = [item.rich_message.html for item in telegramify_rich(markdown)]
+
+    def test_quoted_lines_keep_text_breaks_bold_and_links(self):
+        from telegramify_markdown.rich import RICH_BYTE_LIMIT, _html_fragment_to_text
+
+        self.assertGreater(len(self.parts), 1)
+        for part in self.parts:
+            self.assertLessEqual(len(part.encode("utf-8")), RICH_BYTE_LIMIT)
+        joined = "".join(self.parts)
+        self.assertEqual(_html_fragment_to_text(joined), _html_fragment_to_text(self.whole))
+        for tag in ("<br/>", "<b>", "</b>", "<a ", "</a>"):
+            self.assertEqual(joined.count(tag), self.whole.count(tag), tag)
+
+    def test_cuts_fall_on_line_breaks(self):
+        for part in self.parts[:-1]:
+            self.assertTrue(part.endswith("<br/></p></blockquote>"), part[-40:])
+
+    def test_formatting_open_at_a_cut_is_closed_and_reopened(self):
+        whole = richify("**bold _" + "it " * 12000 + "end_ tail**").html
+        parts = [chunk.html for chunk in split_rich(InputRichMessage(html=whole))]
+        self.assertEqual(len(parts), 2)
+        self.assertTrue(parts[0].startswith("<p><b>bold <i>"))
+        self.assertTrue(parts[0].endswith("</i></b></p>"))
+        self.assertTrue(parts[1].startswith("<p><b><i>"))
+        self.assertTrue(parts[1].endswith("end</i> tail</b></p>"))
+
+    def test_unsplittable_tag_falls_back_to_plain_text_with_a_warning(self):
+        html = '<p><a href="https://e.com/' + "x" * 40000 + '">t</a></p>'
+        with self.assertLogs("telegramify_markdown.rich", level="WARNING") as logs:
+            parts = [chunk.html for chunk in split_rich(InputRichMessage(html=html))]
+        self.assertEqual(parts, ["<p>t</p>"])
+        self.assertTrue(any("drops its formatting" in line for line in logs.output))
+
+
 if __name__ == "__main__":
     unittest.main()
