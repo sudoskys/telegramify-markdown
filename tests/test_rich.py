@@ -458,9 +458,8 @@ class OversizedContainerSplitTest(unittest.TestCase):
                 self.assertNotIn('<ol start="1">', chunks[-1].html)
 
     def test_unsplittable_oversized_child_still_warns(self):
-        # A single 40KB list item cannot be split further. Splitting the
-        # surrounding <ul> partially succeeds, which used to bypass the warning
-        # and emit an over-limit payload silently.
+        # A single 40KB list item cannot be split further, so splitting the
+        # surrounding <ul> only partly succeeds
         from telegramify_markdown.rich import RICH_BYTE_LIMIT
 
         with self.assertLogs("telegramify_markdown.rich", level="WARNING") as logs:
@@ -473,6 +472,11 @@ class OversizedContainerSplitTest(unittest.TestCase):
         ]
         self.assertEqual(len(oversized), 1)
         self.assertTrue(any("cannot be split further" in line for line in logs.output))
+
+    def test_deep_nesting_goes_out_unsplit(self):
+        with self.assertLogs("telegramify_markdown.rich", level="WARNING"):
+            items = telegramify_rich(">" * 1400 + " x")
+        self.assertEqual(len(items), 1)
 
 
 class CallerAuthoredHtmlSplitTest(unittest.TestCase):
@@ -521,6 +525,15 @@ class CallerAuthoredHtmlSplitTest(unittest.TestCase):
             self.assertIn("data-x='a>b'", part)
             self.assertTrue(part.endswith("</ol>"))
             self.assertLessEqual(len(part.encode("utf-8")), 60)
+
+    def test_bare_text_inside_a_split_container_is_kept(self):
+        text = "1" * 3000 + "<b>" + "2" * 2500 + "</b>" + "3" * 3000
+        parts = self._split(f"<blockquote>{text}</blockquote>", 4096)
+        self.assertGreater(len(parts), 1)
+        self.assertEqual(
+            "".join(parts).replace("<blockquote>", "").replace("</blockquote>", ""),
+            text,
+        )
 
 
 if __name__ == "__main__":

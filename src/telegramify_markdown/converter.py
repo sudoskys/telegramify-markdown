@@ -31,37 +31,19 @@ _SPOILER_RE = re.compile(r"(?<![\\])\|\|(.+?)\|\|", re.DOTALL)
 def _code_regions(text: str, options) -> list[tuple[int, int]]:
     """UTF-8 byte ranges of the source that the parser treats as code.
 
-    Asking pyromark rather than scanning lines. A hand-rolled scanner has to
-    reimplement CommonMark's container prefixes to get this right: a fence can
-    sit inside a blockquote or a list item, a backtick fence's info string may
-    not contain a backtick, and indented code has its own rules about what
-    precedes it. Each of those was got wrong in turn, and getting it wrong
-    rewrites the user's code instead of a spoiler.
+    The ranges come in document order and never overlap. Asking the parser keeps
+    CommonMark's rules for fences inside containers and for indented code in one
+    place.
     """
     regions: list[tuple[int, int]] = []
-    for event in pyromark.events_with_range(text, options=options):
-        if not (
-            isinstance(event, tuple)
-            and len(event) == 2
-            and isinstance(event[1], dict)
-        ):
-            continue
-        payload, source_range = event
+    for payload, source_range in pyromark.events_with_range(text, options=options):
         if not isinstance(payload, dict):
             continue
         start = payload.get("Start")
         is_code_block = isinstance(start, dict) and "CodeBlock" in start
         if is_code_block or "Code" in payload:
             regions.append((source_range["start"], source_range["end"]))
-
-    regions.sort()
-    merged: list[tuple[int, int]] = []
-    for region_start, region_end in regions:
-        if merged and region_start <= merged[-1][1]:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], region_end))
-        else:
-            merged.append((region_start, region_end))
-    return merged
+    return regions
 
 
 def _preprocess_spoilers(text: str, options=STANDARD_OPTIONS) -> str:
@@ -94,26 +76,28 @@ def _preprocess_spoilers(text: str, options=STANDARD_OPTIONS) -> str:
     return "".join(parts)
 
 
-def _spoiler_replacement(match: re.Match) -> str:
-    """Wrap ||...|| in <tg-spoiler>, keeping the open tag off its own line.
+# A line break plus the blockquote markers that open the next line. Indentation
+# alone stays with the text: in front of the tag it could start indented code.
+_LINE_BREAK = r"(?:\r\n?|\n)(?:[ \t]*>[ \t]?)*"
+_SPOILER_EDGES_RE = re.compile(
+    rf"((?:[ \t]*{_LINE_BREAK})*)(.*?)((?:{_LINE_BREAK}[ \t]*)*)", re.DOTALL
+)
 
-    CommonMark treats a line holding nothing but a complete open tag as an HTML
-    block (type 7). A literal translation of ``||\\ncontent\\n||`` puts
-    ``<tg-spoiler>`` alone on a line, so the whole thing parses as an HTML block
-    -- and the converter drops Html events, silently losing the content. Moving
-    the leading and trailing newlines outside the tags keeps them on the same
-    line as the text, so this stays inline HTML.
+
+def _spoiler_replacement(match: re.Match) -> str:
+    """Wrap ||...|| in <tg-spoiler>, keeping the open tag off a line of its own.
+
+    CommonMark reads a line holding nothing but a complete open tag as an HTML
+    block (type 7), which the converter drops. Line breaks at either edge of the
+    content, with the whitespace and blockquote markers around them, therefore
+    stay outside the tags.
     """
-    content = match.group(1)
-    stripped = content.strip("\r\n")
-    if not stripped:
+    edges = _SPOILER_EDGES_RE.fullmatch(match.group(1))
+    assert edges is not None  # every group may be empty, so any content matches
+    leading, body, trailing = edges.groups()
+    if not body:
         return match.group(0)
-    # Move the exact line breaks back outside, CR included: stripping only "\n"
-    # leaves a leading "\r" behind, which still puts the open tag on its own
-    # line under CRLF input and loses the whole span.
-    leading = content[: len(content) - len(content.lstrip("\r\n"))]
-    trailing = content[len(content.rstrip("\r\n")) :]
-    return f"{leading}<tg-spoiler>{stripped}</tg-spoiler>{trailing}"
+    return f"{leading}<tg-spoiler>{body}</tg-spoiler>{trailing}"
 
 
 def _validate_telegram_emoji(url: str) -> Optional[str]:
@@ -131,8 +115,7 @@ _LATEX_INLINE_P = re.compile(r"\\\((.*?)\\\)", re.DOTALL)
 
 
 # Common LaTeX commands plus the full symbol tables, used to decide whether a
-# fragment is worth running through LaTeX conversion. Built once at module level:
-# the table has 500+ entries and rebuilding it per call is pure waste.
+# fragment is worth running through LaTeX conversion.
 _LATEX_PROBE_SYMBOLS = (
     (r"\frac", r"\sqrt", r"\begin")
     + tuple(LATEX_SYMBOLS.keys())
@@ -209,9 +192,6 @@ class _TextBuffer:
 
     @property
     def py_offset(self) -> int:
-        # Tracked incrementally instead of recomputing sum(len(p) for p in _parts):
-        # _on_start_item reads this for every list item, so recomputing degrades
-        # conversion to O(n^2) -- a 4000-item document took 400ms.
         return self._py_offset
 
     def trailing_newline_count(self) -> int:
@@ -268,6 +248,7 @@ class EventWalker:
 
         # Block-level state
         self._block_count: int = 0  # For paragraph spacing
+        self._last_block_start: int = -1  # Lower bound of the blank-line scan
         self._list_stack: list[int | None] = []  # None=unordered, int=next_number
         self._item_indent: str = ""  # 当前 item 的缩进，用于 task list marker 替换
 
@@ -803,18 +784,15 @@ class EventWalker:
     def _has_extra_blank_line(self, next_block_start: int) -> bool:
         """Whether the source holds a blank line just before next_block_start.
 
-        The gap between the previous block's source end and this block's start
-        cannot answer this: pyromark's List range already swallows the trailing
-        blank line (for ``- a\\n- b\\n\\npara`` the End(List) range is 0..9 while
-        para starts at 9, leaving an empty gap), so every block after a list
-        lost its blank line. Scanning backwards from next_block_start instead --
-        skipping indentation and blockquote ``>`` markers while counting
-        newlines -- answers the question directly, independent of where the
-        previous block was said to end.
+        Scans back from next_block_start, skipping indentation and blockquote
+        ``>`` markers while counting line breaks. Block ranges cannot answer
+        this: pyromark's List range swallows the blank line after the list. The
+        scan stops at the previous block's start, so nested containers, which
+        open one marker apart, do not rescan the same prefix.
         """
         i = next_block_start - 1
         newlines = 0
-        while i >= 0:
+        while i > self._last_block_start:
             ch = self._source_bytes[i : i + 1]
             if ch == b"\r":
                 # CommonMark accepts a bare CR as a line ending. Inside a CRLF
@@ -847,6 +825,8 @@ class EventWalker:
             needed = desired - trailing
             if needed > 0:
                 self._buf.write("\n" * needed)
+        if next_block_start is not None:
+            self._last_block_start = next_block_start
 
 
 # --- Public API ---------------------------------------------------------------

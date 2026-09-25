@@ -185,12 +185,6 @@ async def process_markdown(
         if text_chunk:
             _append_text_chunks(result, text_chunk, text_entities, max_message_length)
 
-    # The two branches above already cover every non-empty span of text: each
-    # segment before the cursor reaches the end goes through _append_text_chunks,
-    # and so does the remainder after it. No fallback branch here on purpose --
-    # the earlier one paired full_text.strip() with unadjusted full_entities, so
-    # it would have emitted misaligned entities had it ever fired.
-
     return result
 
 

@@ -11,12 +11,8 @@ def utf16_len(text: str) -> int:
     not Python str characters. Characters outside the BMP (codepoint > 0xFFFF)
     take 2 UTF-16 code units (a surrogate pair); all others take 1.
     """
-    # ASCII is the common case, and str.isascii() is a flag check in CPython (O(1)).
-    # Non-ASCII goes through a C-level encode, 25-100x faster than a per-character
-    # ord() loop. _TextBuffer.write calls this on every write, so it sits on the
-    # hot path of conversion. surrogatepass keeps lone surrogates working: a
-    # plain encode raises on them, while counting them is well defined (one
-    # code unit each) and callers may hold them from surrogateescape decoding.
+    # surrogatepass counts a lone surrogate as one code unit; a plain encode
+    # raises on it.
     if text.isascii():
         return len(text)
     return len(text.encode("utf-16-le", "surrogatepass")) >> 1

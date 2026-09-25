@@ -670,17 +670,17 @@ def _heuristic_html_blocks(html_content: str) -> list[RichBlock]:
     while pos < length:
         # 找到下一个 < 标签
         if html_content[pos] != "<":
-            # 不应该出现，但容错: 收集到下一个 <
+            # Bare text between blocks, as in caller-written HTML, is a block too
             next_tag = html_content.find("<", pos)
             if next_tag == -1:
-                # 剩余文本作为一个 block
-                fragment = html_content[pos:]
+                next_tag = length
+            fragment = html_content[pos:next_tag]
+            if fragment.strip():
                 blocks.append(RichBlock(
                     html=fragment,
                     byte_len=len(fragment.encode("utf-8")),
                     block_count=1,
                 ))
-                break
             pos = next_tag
             continue
 
@@ -930,7 +930,14 @@ def _flush_chunk(
         chunks.append(InputRichMessage(markdown=joined, is_rtl=is_rtl, skip_entity_detection=skip_entity_detection))
 
 
-def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]:
+# Telegram's nesting limit. Deeper containers are emitted unsplit, with the
+# over-limit warning, which also keeps the split recursion shallow.
+_MAX_SPLIT_DEPTH = 16
+
+
+def _split_oversized_block(
+    block: RichBlock, byte_limit: int, depth: int = 0
+) -> list[RichBlock]:
     """Split an oversized block while preserving valid Rich HTML.
 
     Leaf blocks (``<p>`` / ``<pre>``) split by text; container blocks
@@ -966,8 +973,8 @@ def _split_oversized_block(block: RichBlock, byte_limit: int) -> list[RichBlock]
         ]
 
     container = _extract_container(html_text)
-    if container is not None:
-        return _split_container(*container, byte_limit=byte_limit)
+    if container is not None and depth < _MAX_SPLIT_DEPTH:
+        return _split_container(*container, byte_limit=byte_limit, depth=depth)
 
     return []
 
@@ -1006,6 +1013,7 @@ def _split_container(
     tag: str,
     *,
     byte_limit: int,
+    depth: int,
 ) -> list[RichBlock]:
     """Split a container by direct child, re-wrapping each part in its tags."""
     children = _heuristic_html_blocks(inner)
@@ -1029,7 +1037,7 @@ def _split_container(
     expanded: list[RichBlock] = []
     for child in children:
         if child.byte_len > budget:
-            pieces = _split_oversized_block(child, budget)
+            pieces = _split_oversized_block(child, budget, depth + 1)
             expanded.extend(pieces or [child])
         else:
             expanded.append(child)

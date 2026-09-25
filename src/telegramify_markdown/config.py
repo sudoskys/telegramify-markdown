@@ -53,35 +53,32 @@ class RenderConfig:
     affect each other, use :meth:`isolated`.
     """
 
-    _global: "RenderConfig | None" = None
-
-    def __new__(cls) -> "RenderConfig":
-        if cls._global is None:
-            cls._global = super().__new__(cls)
-            cls._global._init_defaults()
-        return cls._global
+    _global: RenderConfig  # created at import, below the class
+    _markdown_symbol: Symbol
+    _mermaid: Mermaid
+    _cite_expandable: bool
 
     # No __init__ on purpose: repeated construction must not reset settings
     # that have already been applied to the global instance.
-    def _init_defaults(self) -> None:
-        self._markdown_symbol = Symbol()
-        self._mermaid = Mermaid()
-        self._cite_expandable = True
+    def __new__(cls) -> RenderConfig:
+        return cls._global
+
+    def __reduce__(self) -> tuple:
+        # copy and pickle would otherwise rebuild through __new__, i.e. the global
+        return type(self).isolated, (), self.__dict__
 
     @classmethod
-    def isolated(cls) -> "RenderConfig":
+    def isolated(cls) -> RenderConfig:
         """Build an independent config, sharing nothing with the global one."""
         instance = super().__new__(cls)
-        instance._init_defaults()
+        instance._markdown_symbol = Symbol()
+        instance._mermaid = Mermaid()
+        instance._cite_expandable = True
         return instance
 
-    def copy(self) -> "RenderConfig":
+    def copy(self) -> RenderConfig:
         """Copy this config into an independent one, symbol tables included."""
-        instance = super().__new__(type(self))
-        instance._markdown_symbol = copy.deepcopy(self._markdown_symbol)
-        instance._mermaid = copy.deepcopy(self._mermaid)
-        instance._cite_expandable = self._cite_expandable
-        return instance
+        return copy.deepcopy(self)
 
     @property
     def markdown_symbol(self) -> Symbol:
@@ -98,6 +95,9 @@ class RenderConfig:
     @cite_expandable.setter
     def cite_expandable(self, value: bool):
         self._cite_expandable = value
+
+
+RenderConfig._global = RenderConfig.isolated()
 
 
 # Global accessor function for accessing the RenderConfig singleton

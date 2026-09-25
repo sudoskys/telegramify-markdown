@@ -5,13 +5,6 @@ more than ten -- rather than an absolute duration. Absolute timings depend on
 the machine; the ratio does not. A linear implementation lands around 4x and a
 quadratic one around 16x, so a 10x threshold separates them cleanly while
 leaving room for CI noise.
-
-Two quadratic regressions have shipped here before:
-- _TextBuffer.py_offset recomputed sum(len(p) for p in _parts) on every read,
-  and _on_start_item reads it once per list item; a 4000-item document took
-  400ms.
-- The MarkdownV2 blockquote lookup scanned bq_ranges linearly once per line;
-  a 43KB all-quote document took 161ms.
 """
 
 import time
@@ -56,6 +49,9 @@ class ConversionScalingTest(unittest.TestCase):
         self._assert_scales_linearly(
             lambda n: "\n\n".join(f"para {i}" for i in range(n)), 500, 2000
         )
+
+    def test_nested_blockquotes_scale_linearly(self):
+        self._assert_scales_linearly(lambda n: "hi\n\n" + ">" * n + "x", 1000, 4000)
 
 
 class MarkdownV2ScalingTest(unittest.TestCase):

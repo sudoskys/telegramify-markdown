@@ -123,12 +123,7 @@ class ProcessMarkdownTest(unittest.IsolatedAsyncioTestCase):
 
 
 class DeprecatedArgumentTest(unittest.IsolatedAsyncioTestCase):
-    """0.x compatibility parameters on telegramify().
-
-    max_message_length = max_word_count used to sit inside the
-    normalize_whitespace branch: the alias silently did nothing, and
-    normalize_whitespace=True set the length limit to None and then crashed.
-    """
+    """0.x compatibility parameters on telegramify()."""
 
     async def test_max_word_count_still_limits_length(self):
         import warnings

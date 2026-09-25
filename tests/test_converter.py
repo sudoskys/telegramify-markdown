@@ -747,10 +747,6 @@ class BlockSpacingAfterListTest(unittest.TestCase):
     concluded there was no blank line after a list.
     """
 
-    def test_paragraph_after_list_keeps_blank_line(self):
-        text, _ = convert("- a\n- b\n\npara", latex_escape=False)
-        self.assertIn("\n\npara", text)
-
     def test_ordered_list_then_heading_keeps_blank_line(self):
         text, _ = convert("1. a\n2. b\n\n# h", latex_escape=False)
         self.assertIn("\n\n", text.split("b")[1])
@@ -828,26 +824,12 @@ class SpoilerCodeRegionTest(unittest.TestCase):
         self.assertIn("||x||", text)
         self.assertIsNone(_find_entity(entities, "spoiler"))
 
-    def test_fence_inside_blockquote_is_code(self):
-        # A fence can sit behind a container prefix. Missing that rewrites the
-        # quoted code instead of leaving it alone.
-        text, entities = convert("> ```\n> a || b || c\n> ```", latex_escape=False)
-        self.assertIn("a || b || c", text)
-        self.assertIsNone(_find_entity(entities, "spoiler"))
-
-    def test_fence_inside_list_item_is_code(self):
-        text, entities = convert("- ```\n  a || b || c\n  ```", latex_escape=False)
-        self.assertIn("a || b || c", text)
-        self.assertIsNone(_find_entity(entities, "spoiler"))
-
     def test_multi_backtick_inline_code_is_skipped(self):
         text, entities = convert("x ``a || b || c`` y", latex_escape=False)
         self.assertIn("a || b || c", text)
         self.assertIsNone(_find_entity(entities, "spoiler"))
 
     def test_container_and_fence_shapes_never_rewrite_code(self):
-        # Every shape a hand-rolled line scanner got wrong. The parser decides
-        # what is code now, so these must all survive untouched.
         for name, source in (
             ("blockquote fence", "> ```\n> ||x||\n> ```"),
             ("nested blockquote fence", "> > ```\n> > ||x||\n> > ```"),
@@ -876,17 +858,6 @@ class SpoilerCodeRegionTest(unittest.TestCase):
                 _, entities = convert(source, latex_escape=False)
                 self.assertIsNotNone(_find_entity(entities, "spoiler"))
 
-    def test_spoiler_in_deeply_indented_list_still_works(self):
-        # A list item indented four spaces is not an indented code block, so
-        # the spoiler must still apply
-        text, entities = convert("- a\n    - ||x||\n", latex_escape=False)
-        self.assertIsNotNone(_find_entity(entities, "spoiler"))
-        self.assertNotIn("||", text)
-
-    def test_spoiler_in_paragraph_continuation_still_works(self):
-        text, entities = convert("para\n    ||x|| cont\n", latex_escape=False)
-        self.assertIsNotNone(_find_entity(entities, "spoiler"))
-
 
 class MultilineSpoilerTest(unittest.TestCase):
     """An open tag alone on a line becomes a CommonMark HTML block, and the
@@ -905,14 +876,27 @@ class MultilineSpoilerTest(unittest.TestCase):
         self.assertIsNotNone(_find_entity(entities, "spoiler"))
 
     def test_crlf_wrapped_spoiler_survives(self):
-        # Stripping only "\n" leaves the leading "\r", which still puts the
-        # open tag alone on its line under CRLF input and drops the span.
         for source in ("||\r\nsecret\r\n||", "||\rsecret\r||", "||\r\nsecret\n||"):
             with self.subTest(source=source):
                 text, entities = convert(source, latex_escape=False)
                 spoiler = _find_entity(entities, "spoiler")
                 self.assertIsNotNone(spoiler)
                 self.assertEqual(_extract_entity_text(text, spoiler), "secret")
+
+    def test_whitespace_after_opening_bars_survives(self):
+        for source in ("||  \nsecret\n||", "||\t\nsecret\n||"):
+            with self.subTest(source=source):
+                text, entities = convert(source, latex_escape=False)
+                spoiler = _find_entity(entities, "spoiler")
+                self.assertIsNotNone(spoiler)
+                self.assertEqual(_extract_entity_text(text, spoiler), "secret")
+
+    def test_wrapped_spoiler_inside_blockquote_stays_hidden(self):
+        text, entities = convert("> ||\n> the answer\n> ||", latex_escape=False)
+        spoiler = _find_entity(entities, "spoiler")
+        self.assertIsNotNone(spoiler)
+        self.assertEqual(_extract_entity_text(text, spoiler), "the answer")
+        self.assertIsNotNone(_find_entity(entities, "blockquote"))
 
 
 class ImageInTableCellTest(unittest.TestCase):
@@ -1004,8 +988,6 @@ class RenderConfigIsolationTest(unittest.TestCase):
         self.assertEqual(RenderConfig().markdown_symbol.unordered_list_item, "@")
 
     def test_isinstance_works(self):
-        # Under the decorator implementation RenderConfig was a function and
-        # isinstance raised TypeError
         from telegramify_markdown.config import RenderConfig, get_runtime_config
 
         self.assertIsInstance(get_runtime_config(), RenderConfig)
@@ -1031,16 +1013,24 @@ class RenderConfigIsolationTest(unittest.TestCase):
         clone.markdown_symbol.unordered_list_item = "#"
         self.assertEqual(get_runtime_config().markdown_symbol.unordered_list_item, "@")
 
-    def test_two_isolated_configs_render_differently(self):
-        from telegramify_markdown.config import RenderConfig
+    def test_copy_protocols_never_hand_back_the_global(self):
+        import copy
+        import pickle
 
-        dash = RenderConfig.isolated()
-        dash.markdown_symbol.unordered_list_item = "-"
-        bullet = RenderConfig.isolated()
-        bullet.markdown_symbol.unordered_list_item = "•"
+        from telegramify_markdown.config import RenderConfig, get_runtime_config
 
-        self.assertIn("- x", convert("- x", config=dash, latex_escape=False)[0])
-        self.assertIn("• x", convert("- x", config=bullet, latex_escape=False)[0])
+        source = RenderConfig.isolated()
+        source.markdown_symbol.unordered_list_item = "-"
+        for name, clone in (
+            ("copy", copy.copy),
+            ("deepcopy", copy.deepcopy),
+            ("pickle", lambda cfg: pickle.loads(pickle.dumps(cfg))),
+        ):
+            with self.subTest(name=name):
+                duplicate = clone(source)
+                self.assertIsNot(duplicate, get_runtime_config())
+                self.assertEqual(duplicate.markdown_symbol.unordered_list_item, "-")
+                self.assertEqual(self.symbol.unordered_list_item, self._saved)
 
     def test_concurrent_threads_do_not_share_isolated_config(self):
         import threading

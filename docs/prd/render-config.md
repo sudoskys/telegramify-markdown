@@ -128,6 +128,7 @@ for concurrent use.
 | `isolated()` after mutating the global | Carries library defaults, not the global's values |
 | Mutating an `isolated()` config | Global is unchanged |
 | `copy()` of a mutated global | Carries the global's values, then diverges independently |
+| `copy.copy`, `copy.deepcopy` or `pickle` of any config | A new instance, never the global; the global is unchanged |
 | Two threads, two `isolated()` configs, same markdown | Each renders its own marker |
 | `telegramify(config=cfg)` with `unordered_list_item = "-"` | Output uses `-`, global unchanged |
 | `get_mermaid_ink_url(diagram, cfg)` with `width = 4242` | URL carries `width=4242`; omitting `cfg` carries the global width |

@@ -30,8 +30,6 @@ def _escape_table(chars: str) -> dict[int, str]:
     return str.maketrans({ch: "\\" + ch for ch in chars})
 
 
-# A translation table runs in one C-level pass, 1.4-3.4x faster than appending
-# per character. Escaping is on the path of every text segment.
 _MDV2_TRANS = _escape_table(_MDV2_ESCAPE_CHARS)
 _CODE_TRANS = _escape_table(_CODE_ESCAPE_CHARS)
 _URL_TRANS = _escape_table(_URL_ESCAPE_CHARS)
@@ -107,8 +105,7 @@ def entities_to_markdownv2(text: str, entities: list[MessageEntity] | None = Non
             other_entities.append(ent)
 
     # Blockquote position lookup runs once per line, so it must be constant or
-    # logarithmic. Scanning bq_ranges linearly degraded quote-heavy documents to
-    # O(lines x quotes) -- a 43KB all-quote document took 161ms.
+    # logarithmic.
     expandable_starts = {
         start_py for start_py, _, typ in bq_ranges if typ == "expandable_blockquote"
     }

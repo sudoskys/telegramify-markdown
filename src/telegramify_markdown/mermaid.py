@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from typing import Union, Tuple
 from urllib.parse import urlencode
 
-from telegramify_markdown.config import get_runtime_config
+from telegramify_markdown.config import RenderConfig, get_runtime_config
 from telegramify_markdown.logger import logger
 
 if TYPE_CHECKING:
@@ -109,7 +109,11 @@ def safe_base64_encode(data):
     return base64.urlsafe_b64encode(data)
 
 
-def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None, config=None) -> str:
+def generate_pako(
+    graph_markdown: str,
+    mermaid_config: MermaidConfig = None,
+    config: RenderConfig | None = None,
+) -> str:
     """
     Generate the pako URL for the Mermaid graph.
     :param graph_markdown: Input Mermaid graph markdown
@@ -130,7 +134,7 @@ def generate_pako(graph_markdown: str, mermaid_config: MermaidConfig = None, con
     return f"pako:{base64_encoded.decode('ascii')}"
 
 
-def _build_mermaid_ink_query(config=None) -> str:
+def _build_mermaid_ink_query(config: RenderConfig | None = None) -> str:
     """Build Mermaid Ink query parameters from the given (or global) config."""
     mermaid_config = (config or get_runtime_config()).mermaid
     return urlencode(
@@ -155,7 +159,7 @@ def b64_mermaid_url(diagram: str) -> str:
     return f'https://mermaid.ink/img/{diagram_encoded}?{_build_mermaid_ink_query()}'
 
 
-def get_mermaid_live_url(graph_markdown: str, config=None) -> str:
+def get_mermaid_live_url(graph_markdown: str, config: RenderConfig | None = None) -> str:
     """
     Get the Mermaid Live URL for the graph.
     Can be used to edit the graph in the browser.
@@ -166,7 +170,7 @@ def get_mermaid_live_url(graph_markdown: str, config=None) -> str:
     return f'https://mermaid.live/edit/#{generate_pako(graph_markdown, config=config)}'
 
 
-def get_mermaid_ink_url(graph_markdown: str, config=None) -> str:
+def get_mermaid_ink_url(graph_markdown: str, config: RenderConfig | None = None) -> str:
     """
     Get the Mermaid Ink URL for the graph.
     Can be used to download the image.
@@ -180,7 +184,7 @@ def get_mermaid_ink_url(graph_markdown: str, config=None) -> str:
 async def render_mermaid(
         diagram: str,
         session: "ClientSession" = None,
-        config=None,
+        config: RenderConfig | None = None,
 ) -> Tuple[BytesIO, str]:
     # render picture
     img_url = get_mermaid_ink_url(diagram, config)
