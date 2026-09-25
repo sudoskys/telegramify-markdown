@@ -1130,8 +1130,8 @@ _INLINE_TOKEN_RE = re.compile(
 _VOID_TAGS = frozenset({"br", "hr", "img", "wbr"})
 
 
-def _inline_tokens(fragment: str) -> list[tuple[str, int, str, str]]:
-    """(token, UTF-8 size, kind, lowercase tag name or "") per inline token."""
+def _inline_tokens(fragment: str) -> list[tuple[str, str, str]]:
+    """(token, kind, lowercase tag name or "") per inline token."""
     tokens = []
     for match in _INLINE_TOKEN_RE.finditer(fragment):
         token, name = match.group(0), (match.group(1) or "").lower()
@@ -1145,7 +1145,7 @@ def _inline_tokens(fragment: str) -> list[tuple[str, int, str, str]]:
             kind = "void"
         else:
             kind = "open"
-        tokens.append((token, len(token.encode("utf-8")), kind, name))
+        tokens.append((token, kind, name))
     return tokens
 
 
@@ -1160,22 +1160,24 @@ def _split_inline_html(fragment: str, budget: int) -> list[str] | None:
     """
     tokens = _inline_tokens(fragment)
     parts: list[str] = []
-    carried: tuple[tuple[str, str], ...] = ()  # (name, open tag) open at the cut
+    carried: tuple[tuple[str, str], ...] = ()  # (open tag, closer) open at the cut
     start = 0
     while start < len(tokens):
         stack = carried
-        size = sum(len(tag.encode("utf-8")) for _, tag in stack)
-        reserve = sum(len(name) + 3 for name, _ in stack)  # bytes of the closers
+        size = sum(len(open_tag.encode("utf-8")) for open_tag, _ in stack)
+        reserve = sum(len(closer) for _, closer in stack)
         line_cut = space_cut = None
         end = start
         while end < len(tokens):
-            token, token_size, kind, name = tokens[end]
+            token, kind, name = tokens[end]
+            token_size = len(token.encode("utf-8"))
             if kind == "close":
-                if not stack or stack[-1][0] != name:
+                if not stack or stack[-1][1] != f"</{name}>":
                     return None
-                next_stack, next_reserve = stack[:-1], reserve - len(name) - 3
+                next_stack, next_reserve = stack[:-1], reserve - len(stack[-1][1])
             elif kind == "open":
-                next_stack, next_reserve = stack + ((name, token),), reserve + len(name) + 3
+                closer = f"</{name}>"
+                next_stack, next_reserve = stack + ((token, closer),), reserve + len(closer)
             else:
                 next_stack, next_reserve = stack, reserve
             if size + token_size + next_reserve > budget:
@@ -1195,9 +1197,9 @@ def _split_inline_html(fragment: str, budget: int) -> list[str] | None:
         else:
             cut, cut_stack = line_cut or space_cut or (end, stack)
         parts.append(
-            "".join(tag for _, tag in carried)
-            + "".join(token for token, _, _, _ in tokens[start:cut])
-            + "".join(f"</{name}>" for name, _ in reversed(cut_stack))
+            "".join(open_tag for open_tag, _ in carried)
+            + "".join(token for token, _, _ in tokens[start:cut])
+            + "".join(closer for _, closer in reversed(cut_stack))
         )
         start, carried = cut, cut_stack
     return parts
