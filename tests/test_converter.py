@@ -65,6 +65,11 @@ class StrikethroughTest(unittest.TestCase):
         self.assertIsNotNone(s)
         self.assertEqual(_extract_entity_text(text, s), "hello")
 
+    def test_single_tilde_is_literal(self):
+        text, entities = convert("~700 JPY (**~$4.50**)", latex_escape=False)
+        self.assertEqual(text, "~700 JPY (~$4.50)")
+        self.assertEqual([e.type for e in entities], ["bold"])
+
 
 class NestedFormattingTest(unittest.TestCase):
     def test_bold_italic(self):
@@ -297,6 +302,15 @@ class MathTest(unittest.TestCase):
         code = _find_entity(entities, "code")
         self.assertIsNotNone(code)
         self.assertIn("x + y", _extract_entity_text(text, code))
+
+    def test_closing_dollar_before_digit_is_a_price(self):
+        text, entities = convert(
+            "💰 $10.49, with tax (**~$11.20**)", latex_escape=False
+        )
+        self.assertEqual(text, "💰 $10.49, with tax (~$11.20)")
+        (bold,) = entities
+        self.assertEqual(bold.type, "bold")
+        self.assertEqual(_extract_entity_text(text, bold), "~$11.20")
 
     def test_display_math(self):
         text, entities = convert("$$x + y$$", latex_escape=False)

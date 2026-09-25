@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from itertools import pairwise
 from typing import Optional
 
 import pyromark
@@ -46,7 +47,7 @@ def _code_regions(text: str, options) -> list[tuple[int, int]]:
     return regions
 
 
-def _preprocess_spoilers(text: str, options=STANDARD_OPTIONS) -> str:
+def _preprocess_spoilers(text: str, options: pyromark.Options) -> str:
     """Replace ||spoiler|| with <tg-spoiler>spoiler</tg-spoiler>.
 
     Content inside fenced code, indented code, and inline code spans is left
@@ -150,6 +151,56 @@ def _escape_latex(text: str) -> str:
         line = _LATEX_INLINE_P.sub(lambda m: _convert(m, is_block=False), line)
         processed.append(line)
     return "\n\n".join(processed)
+
+
+_STRIKETHROUGH_START = {"Start": "Strikethrough"}
+
+
+def _parse(
+    markdown: str, options: pyromark.Options, *, latex_escape: bool
+) -> tuple[str, tuple]:
+    """Preprocess and parse Markdown; return the parsed text and its ranged events.
+
+    Two delimiter readings that the Markdown extensions allow are rarely what
+    chat text means, so their delimiters are escaped and the text parsed again
+    until neither remains. Escaped delimiters never match again, so this ends.
+
+    - Inline math whose closing ``$`` is directly followed by a digit, as in
+      ``$10.49 (~$11.20)``, is two prices (pandoc's rule for ``$`` math).
+    - Strikethrough takes ``~~``; a single ``~`` reads as "approximately".
+    """
+    text = _escape_latex(markdown) if latex_escape else markdown
+    text = _preprocess_spoilers(text, options)
+    events = pyromark.events_with_range(text, options=options)
+    while offsets := _literal_delimiters(text, events):
+        text = _escape_at(text, offsets)
+        events = pyromark.events_with_range(text, options=options)
+    return text, events
+
+
+def _literal_delimiters(text: str, events: tuple) -> list[int]:
+    """UTF-8 byte offsets of the ``$`` and ``~`` delimiters to read as text."""
+    if "$" not in text and "~" not in text:
+        return []
+    source = text.encode("utf-8")
+    offsets: list[int] = []
+    for payload, source_range in events:
+        if payload == _STRIKETHROUGH_START:
+            start, end = source_range["start"], source_range["end"]
+            if source[start + 1 : start + 2] != b"~":
+                offsets += (start, end - 1)
+        elif isinstance(payload, dict) and "InlineMath" in payload:
+            start, end = source_range["start"], source_range["end"]
+            if source[end : end + 1].isdigit():
+                offsets += (start, end - 1)
+    return offsets
+
+
+def _escape_at(text: str, offsets: list[int]) -> str:
+    """Insert a backslash before each UTF-8 byte offset of ``text``."""
+    source = text.encode("utf-8")
+    bounds = [0, *sorted(offsets), len(source)]
+    return b"\\".join(source[a:b] for a, b in pairwise(bounds)).decode("utf-8")
 
 
 # --- Segment tracking --------------------------------------------------------
@@ -867,11 +918,5 @@ def convert_with_segments(
     if config is None:
         config = get_runtime_config()
 
-    preprocessed = markdown
-    if latex_escape:
-        preprocessed = _escape_latex(preprocessed)
-    preprocessed = _preprocess_spoilers(preprocessed)
-
-    events = pyromark.events_with_range(preprocessed, options=STANDARD_OPTIONS)
-    walker = EventWalker(config, preprocessed)
-    return walker.walk(events)
+    text, events = _parse(markdown, STANDARD_OPTIONS, latex_escape=latex_escape)
+    return EventWalker(config, text).walk(events)

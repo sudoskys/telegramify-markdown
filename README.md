@@ -516,7 +516,7 @@ Returns the length of a string in UTF-16 code units (what Telegram uses for offs
 ## 🔨 Supported Markdown Features
 
 - [x] Headings (Levels 1-6: H1-H2 bold+underline, H3-H4 bold, H5-H6 italic; H1-H4 with emoji prefix)
-- [x] `**Bold**`, `*Italic*`, `~~Strikethrough~~`
+- [x] `**Bold**`, `*Italic*`, `~~Strikethrough~~` (a single `~`, as in `~5 min`, stays literal)
 - [x] `||Spoiler||`
 - [x] `[Links](url)` and `![Images](url)`
 - [x] Telegram custom emoji `![emoji](tg://emoji?id=...)`
