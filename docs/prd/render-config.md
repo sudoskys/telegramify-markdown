@@ -29,6 +29,7 @@ RenderConfig  ──┬── global instance ── get_runtime_config() / Rend
                                             markdownify() / standardize()
                                             telegramify() ──> process_markdown()
                                                                └─> mermaid URL builders
+                                            DraftStream / EditStream (entity mode) ──> convert()
 ```
 
 ### Data-Centered Decisions
@@ -56,7 +57,7 @@ request boundaries.
 | A single-style bot configures once at startup | `get_runtime_config()` mutation is visible to later conversions that pass no config |
 | Concurrent requests can use different symbols | Two threads rendering with two `isolated()` configs each get their own marker |
 | Existing 1.x callers keep working unchanged | `RenderConfig()` returns the global instance; repeated construction does not reset settings |
-| A config reaches every documented surface | `config=` changes output for `convert`, `markdownify`, `telegramify`, and Mermaid URLs |
+| A config reaches every documented surface | `config=` changes output for `convert`, `markdownify`, `telegramify`, entity-mode `DraftStream` / `EditStream`, and Mermaid URLs |
 
 ## Public Contract
 
@@ -104,6 +105,7 @@ List markers are plain text and carry no entity.
 | `convert()` / `convert_with_segments()` | Symbols used while walking events |
 | `markdownify()` / `standardize()` | Symbols, before MarkdownV2 rendering |
 | `telegramify()` | Symbols, plus Mermaid theme/width/scale/type for rendered diagrams |
+| `DraftStream(...)` / `EditStream(...)` | Entity mode: symbols in every draft, edit and final payload. Rich mode: none |
 | `richify()` / `telegramify_rich()` | None — Rich HTML emits structural tags and reads no symbols |
 
 Omitting `config=` uses the global instance.
@@ -131,6 +133,7 @@ for concurrent use.
 | `copy.copy`, `copy.deepcopy` or `pickle` of any config | A new instance, never the global; the global is unchanged |
 | Two threads, two `isolated()` configs, same markdown | Each renders its own marker |
 | `telegramify(config=cfg)` with `unordered_list_item = "-"` | Output uses `-`, global unchanged |
+| Entity-mode `DraftStream(config=cfg)` / `EditStream(config=cfg)`, same `cfg` | Every draft, edit and final payload uses `-`, global unchanged |
 | `get_mermaid_ink_url(diagram, cfg)` with `width = 4242` | URL carries `width=4242`; omitting `cfg` carries the global width |
 
 ## External Authority

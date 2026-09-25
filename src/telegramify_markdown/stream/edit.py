@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Literal, Optional
 
+from telegramify_markdown.config import RenderConfig
 from telegramify_markdown.stream.core import StreamCore
 from telegramify_markdown.stream.draft import (
     EntityFinalPayload,
@@ -27,6 +28,9 @@ class EditStream:
     - render = richify or convert (based on mode)
     - emit = edit_message(message_id, payload) after first send
     - finalize = one last edit_message with complete content
+
+    ``config`` is the RenderConfig for entity mode, used for every edit and the
+    final message; omitted, the global config applies. Rich mode reads no symbols.
     """
 
     def __init__(
@@ -36,6 +40,7 @@ class EditStream:
         mode: Literal["rich", "entity"] = "rich",
         interval: float = 1.0,
         keepalive_timeout: float = 25.0,
+        config: RenderConfig | None = None,
     ) -> None:
         if interval < 1.0:
             raise ValueError(
@@ -47,6 +52,7 @@ class EditStream:
         self._send_message = send_message
         self._edit_message = edit_message
         self._mode = mode
+        self._config = config
         self._message_id: Optional[int] = None
 
         self._core = StreamCore(
@@ -100,7 +106,7 @@ class EditStream:
         """Entity 模式渲染。"""
         from telegramify_markdown.converter import convert
 
-        text, entities = convert(buffer)
+        text, entities = convert(buffer, config=self._config)
         return EntityFinalPayload(text=text, entities=entities)
 
     def _render_rich(self, buffer: str):
@@ -120,25 +126,13 @@ class EditStream:
             await self._edit_message(self._message_id, payload)
 
     async def _finalize_impl(self, payload) -> None:
-        """Finalize：用完整内容执行最后一次编辑。
+        """Finalize: one last edit with the complete content, as _render made it.
 
-        只调用 convert/richify 产生单条消息。完整管线（拆分、Mermaid）
-        不在 stream 层处理——由调用者编排。
+        Only a single message is produced; splitting and Mermaid rendering are
+        the caller's to orchestrate.
         """
-        buffer = self._core.buffer
-        if self._mode == "entity":
-            from telegramify_markdown.converter import convert
-
-            text, entities = convert(buffer)
-            final = EntityFinalPayload(text=text, entities=entities)
-        else:
-            from telegramify_markdown.rich import richify
-
-            rich_msg = richify(buffer)
-            final = RichFinalPayload(rich_message=rich_msg)
-
         if self._message_id is None:
-            # 如果从未 emit 过（可能全部在 degraded mode），直接 send
-            self._message_id = await self._send_message(final)
+            # Never emitted (for instance, degraded mode throughout): send instead
+            self._message_id = await self._send_message(payload)
         else:
-            await self._edit_message(self._message_id, final)
+            await self._edit_message(self._message_id, payload)

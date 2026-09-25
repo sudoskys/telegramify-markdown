@@ -10,6 +10,7 @@ import dataclasses
 import logging
 from typing import Awaitable, Callable, Literal, Optional
 
+from telegramify_markdown.config import RenderConfig
 from telegramify_markdown.stream.core import StreamCore
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,9 @@ class DraftStream:
     - emit = send_draft callback (with thinking delay and sliding window)
     - finalize = send_final callback
     - on_cancel = empty draft sender (if cancel_clears_draft)
+
+    ``config`` is the RenderConfig for entity mode, used for every draft and the
+    final message; omitted, the global config applies. Rich mode reads no symbols.
     """
 
     def __init__(
@@ -81,6 +85,7 @@ class DraftStream:
         thinking_delay: Optional[float] = 0.5,
         keepalive_timeout: float = 25.0,
         cancel_clears_draft: bool = True,
+        config: RenderConfig | None = None,
     ) -> None:
         if mode not in ("rich", "entity"):
             raise ValueError(f"mode must be 'rich' or 'entity', got {mode!r}")
@@ -88,6 +93,7 @@ class DraftStream:
         self._send_draft = send_draft
         self._send_final = send_final
         self._mode = mode
+        self._config = config
         self._draft_id = draft_id if draft_id is not None else (hash(id(self)) & 0x7FFFFFFF | 1)
         self._thinking_delay = thinking_delay
         self._cancel_clears_draft = cancel_clears_draft
@@ -150,7 +156,7 @@ class DraftStream:
         from telegramify_markdown.converter import convert
         from telegramify_markdown.entity import utf16_len
 
-        text, entities = convert(buffer)
+        text, entities = convert(buffer, config=self._config)
 
         # Sliding window: keep only the trailing 4096 UTF-16 code units.
         # It has to be measured in UTF-16, not Python characters: astral
@@ -250,7 +256,7 @@ class DraftStream:
         buffer = self._core.buffer
         if self._mode == "entity":
             from telegramify_markdown.converter import convert
-            text, entities = convert(buffer)
+            text, entities = convert(buffer, config=self._config)
             final = EntityFinalPayload(text=text, entities=entities)
         else:
             from telegramify_markdown.rich import richify
