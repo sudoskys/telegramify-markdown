@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from telegramify_markdown.converter import convert, convert_with_segments
 from telegramify_markdown.entity import MessageEntity, utf16_len
@@ -1072,6 +1073,32 @@ class RenderConfigIsolationTest(unittest.TestCase):
 
         self.assertEqual(rendered["a"], "- item")
         self.assertEqual(rendered["b"], "• item")
+
+
+class EventsIteratorTest(unittest.TestCase):
+    """pyromark >= 0.10 returns a one-shot iterator from events_with_range;
+    _parse must materialize it so both the delimiter scan and EventWalker
+    can iterate (issue #129: empty output for text with ~ or $)."""
+
+    def test_convert_with_one_shot_events_iterator(self):
+        import pyromark
+
+        from telegramify_markdown import converter
+
+        real = pyromark.events_with_range
+
+        def one_shot(text, *, options):
+            return iter(real(text, options=options))
+
+        with mock.patch.object(
+            converter.pyromark, "events_with_range", one_shot
+        ):
+            for markdown in ("Hiii~", "A cookie for $2?", r"Hiii\~"):
+                with self.subTest(markdown=markdown):
+                    text, _ = convert(markdown, latex_escape=False)
+                    expected = markdown.replace("\\", "")
+                    self.assertNotEqual(text, "")
+                    self.assertIn(expected, text)
 
 
 if __name__ == "__main__":

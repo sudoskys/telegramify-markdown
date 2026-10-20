@@ -171,10 +171,12 @@ def _parse(
     """
     text = _escape_latex(markdown) if latex_escape else markdown
     text = _preprocess_spoilers(text, options)
-    events = pyromark.events_with_range(text, options=options)
+    # pyromark >= 0.10 returns a one-shot iterator; materialize it so the
+    # delimiter scan and EventWalker can both iterate.
+    events = tuple(pyromark.events_with_range(text, options=options))
     while offsets := _literal_delimiters(text, events):
         text = _escape_at(text, offsets)
-        events = pyromark.events_with_range(text, options=options)
+        events = tuple(pyromark.events_with_range(text, options=options))
     return text, events
 
 
