@@ -169,7 +169,7 @@ The default `html` mode uses pyromark events and emits Telegram Rich HTML.
 | image with `tg://emoji?id=...` | `<tg-emoji emoji-id="...">alt</tg-emoji>` |
 | unordered list | `<ul><li>...</li></ul>` |
 | ordered list | `<ol start="..."><li>...</li></ol>` |
-| task list item | `<li>` text starts with `☑ ` or `✅ ` |
+| task list item | `<li><input type="checkbox"/>` or `<input type="checkbox" checked/>` before the text |
 | block quote | `<blockquote>...</blockquote>` |
 | table | `<table><tr><th>...</th></tr><tr><td>...</td></tr></table>` |
 | thematic break | `<hr/>` |

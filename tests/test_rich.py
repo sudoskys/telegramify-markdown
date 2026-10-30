@@ -76,8 +76,21 @@ class RichifyHtmlTest(unittest.TestCase):
         self.assertEqual(rich.html, "<tg-math-block>E = mc^2</tg-math-block>")
 
     def test_lists_and_task_markers(self):
-        rich = richify("- [x] done\n- item")
-        self.assertEqual(rich.html, "<ul><li>✅ done</li><li>item</li></ul>")
+        rich = richify("- [x] done\n- [ ] open\n- item")
+        self.assertEqual(
+            rich.html,
+            '<ul><li><input type="checkbox" checked/>done</li>'
+            '<li><input type="checkbox"/>open</li>'
+            "<li>item</li></ul>",
+        )
+
+    def test_loose_task_list_keeps_checkbox_directly_in_item(self):
+        rich = richify("- [ ] a\n\n- [x] b")
+        self.assertEqual(
+            rich.html,
+            '<ul><li><input type="checkbox"/><p>a</p></li>'
+            '<li><input type="checkbox" checked/><p>b</p></li></ul>',
+        )
 
     def test_ordered_list_start(self):
         rich = richify("3. three\n4. four")

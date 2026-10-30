@@ -179,7 +179,10 @@ class _RichHtmlWalker:
         elif "Html" in event:
             self._write_inline(self._escape_text(event["Html"]))
         elif "TaskListMarker" in event:
-            self._write_inline("✅ " if event["TaskListMarker"] else "☑ ")
+            # Native Rich HTML checkbox; _emit (not _write_inline) keeps it a
+            # direct child of <li> even when a loose item opens a <p>.
+            checked = " checked" if event["TaskListMarker"] else ""
+            self._emit(f'<input type="checkbox"{checked}/>')
         elif "FootnoteReference" in event:
             ref = str(event["FootnoteReference"])
             href = self._escape_attr(f"#{ref}")

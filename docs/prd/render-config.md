@@ -85,7 +85,7 @@ values — the global instance is initialised exactly once per process.
 | `heading_level_1` … `heading_level_6` | `📌` `✏️` `📚` `🔖` `""` `""` | Heading text prefix |
 | `image` | `🖼` | Image placeholder |
 | `link` | `🔗` | Link symbol |
-| `task_completed` / `task_uncompleted` | `✅` / `☑️` | Task list markers, replacing the list marker |
+| `task_completed` / `task_uncompleted` | `✅` / `☐` | Task list markers, replacing the list marker |
 | `horizontal_rule` | `————————` | Thematic break |
 | `unordered_list_item` | `⦁` | Unordered list marker, written after the indent |
 | `ordered_list_suffix` | `.` | Follows the item number, as in `1. ` |

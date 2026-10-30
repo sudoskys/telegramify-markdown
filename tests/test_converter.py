@@ -245,7 +245,8 @@ class ListTest(unittest.TestCase):
         md = "- [x] done\n- [ ] todo"
         text, entities = convert(md, latex_escape=False)
         self.assertIn("✅", text)
-        self.assertIn("☑", text)
+        self.assertIn("☐", text)
+        self.assertNotIn("☑", text)
 
 
 class SpoilerTest(unittest.TestCase):
@@ -746,7 +747,7 @@ class TaskListMarkerTest(unittest.TestCase):
     def test_no_redundant_bullet(self):
         text, _ = convert("- [ ] todo", latex_escape=False)
         self.assertNotIn("⦁", text)  # 无 bullet
-        self.assertIn("☑", text)     # task marker 存在
+        self.assertIn("☐", text)     # task marker 存在
 
     def test_completed_task(self):
         text, _ = convert("- [x] done", latex_escape=False)

@@ -28,7 +28,7 @@ class Symbol:
         self.image: str = "\N{FRAME WITH PICTURE}"               # 🖼
         self.link: str = "\N{LINK SYMBOL}"                       # 🔗
         self.task_completed: str = "\N{WHITE HEAVY CHECK MARK}"  # ✅
-        self.task_uncompleted: str = "\N{BALLOT BOX WITH CHECK}" # ☑️
+        self.task_uncompleted: str = "\N{BALLOT BOX}"            # ☐
         self.horizontal_rule: str = "————————"
         # List markers: written after the indent, before the item text.
         # Always plain text, never covered by an entity.

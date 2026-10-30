@@ -123,7 +123,7 @@ cfg.markdown_symbol.heading_level_4 = "🔖"
 cfg.markdown_symbol.link = "🔗"
 cfg.markdown_symbol.image = "🖼"
 cfg.markdown_symbol.task_completed = "✅"
-cfg.markdown_symbol.task_uncompleted = "☑️"
+cfg.markdown_symbol.task_uncompleted = "☐"
 cfg.markdown_symbol.unordered_list_item = "⦁"  # or "-", "•", "*"
 cfg.markdown_symbol.ordered_list_suffix = "."  # renders "1. item"
 cfg.cite_expandable = True  # long quotes become expandable_blockquote
@@ -289,7 +289,7 @@ telegramify() → list[Text | File | Photo]      # async pipeline
 | Heading | bold | text prefixed with emoji symbol |
 | Table | pre | formatted as aligned plain text |
 | List / Item | (no entity) | plain text: ⦁ / 1. prefix |
-| TaskListMarker | (no entity) | plain text: ✅ / ☑️ prefix |
+| TaskListMarker | (no entity) | plain text: ✅ / ☐ prefix |
 | Rule | (no entity) | inserts ———————— |
 
 ## Supported Markdown features
