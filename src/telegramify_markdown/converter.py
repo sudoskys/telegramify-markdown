@@ -22,6 +22,7 @@ STANDARD_OPTIONS = (
     | pyromark.Options.ENABLE_STRIKETHROUGH
     | pyromark.Options.ENABLE_TASKLISTS
     | pyromark.Options.ENABLE_MATH
+    | pyromark.Options.ENABLE_FOOTNOTES
 )
 
 # --- Preprocessing -----------------------------------------------------------
